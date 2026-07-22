@@ -16,4 +16,8 @@ The scaffold substituted the hyphenated **distribution** name into the **import*
 - [x] Decorate placeholder `main()` with `@type_checker` (typing gate, surfaced by the rename)
 - [x] Verify: `compileall` clean, `import filings_b3` + deep submodule import OK, 43 tests pass
 - [x] Capture the BlueprintX scaffold lesson (store + index + git-ignored repo mirror)
-- [ ] Merge PR and run `/release-py`
+- [x] Merge PR and run `/release-py` — merged as `b4fd95e` (#110), released **v0.1.0**
+
+**Completed — kept as a record.** Every item is done; this ledger stays as the reviewable
+account of the rename. Follow-on work continues in `slim-ingestion-base_20260722_173356.md`
+(issue #3), which the rename unblocked.
