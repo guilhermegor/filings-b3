@@ -25,7 +25,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from filings-b3._internal.utils.http_downloader import download_file
+from filings_b3._internal.utils.http_downloader import download_file
 
 
 # ``Callable`` is a **runtime** import (not TYPE_CHECKING-only): ``@type_checker`` (beartype)
@@ -36,12 +36,12 @@ from filings-b3._internal.utils.http_downloader import download_file
 # DDD; always injected, just at different paths). mypy reads the single TYPE_CHECKING
 # import (no redefinition); at runtime the try/except picks whichever layout shipped.
 if TYPE_CHECKING:
-	from filings-b3._internal.utils.typing import type_checker
+	from filings_b3._internal.utils.typing import type_checker
 else:
 	try:
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 	except ModuleNotFoundError:  # DDD ships the engine as chassis.typing
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 
 
 @type_checker

@@ -19,12 +19,12 @@ import pandas as pd
 # DDD; always injected, just at different paths). mypy reads the single TYPE_CHECKING
 # import (no redefinition); at runtime the try/except picks whichever layout shipped.
 if TYPE_CHECKING:
-	from filings-b3._internal.utils.typing import type_checker
+	from filings_b3._internal.utils.typing import type_checker
 else:
 	try:
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 	except ModuleNotFoundError:  # DDD ships the engine as chassis.typing
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 
 
 # pandas < 3 has no real ``str`` dtype: ``astype("str")`` on a missing value yields the

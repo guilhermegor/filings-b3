@@ -23,19 +23,19 @@ from typing import IO, TYPE_CHECKING
 from urllib import error, request
 from urllib.parse import urlsplit
 
-from filings-b3._internal.utils.retry import retry_with_backoff
+from filings_b3._internal.utils.retry import retry_with_backoff
 
 
 # Runtime type-checking engine — layout-agnostic (utils.typing in MVC, chassis.typing in
 # DDD; always injected, just at different paths). mypy reads the single TYPE_CHECKING
 # import (no redefinition); at runtime the try/except picks whichever layout shipped.
 if TYPE_CHECKING:
-	from filings-b3._internal.utils.typing import TypeChecker, type_checker
+	from filings_b3._internal.utils.typing import TypeChecker, type_checker
 else:
 	try:
-		from filings-b3._internal.utils.typing import TypeChecker, type_checker
+		from filings_b3._internal.utils.typing import TypeChecker, type_checker
 	except ModuleNotFoundError:  # DDD ships the engine as chassis.typing
-		from filings-b3._internal.utils.typing import TypeChecker, type_checker
+		from filings_b3._internal.utils.typing import TypeChecker, type_checker
 
 
 _TIMEOUT_SECONDS: int = 30
