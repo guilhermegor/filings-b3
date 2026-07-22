@@ -31,7 +31,9 @@ also references ``stamp_provenance`` — so a contract-checked read cannot ship 
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+# `datetime.UTC` is a 3.11+ alias for `timezone.utc`; this package's floor is 3.10, where the
+# alias does not exist (ImportError at import time), so use the long-standing spelling.
+from datetime import datetime, timezone
 import hashlib
 from importlib import metadata
 from pathlib import Path
@@ -43,19 +45,19 @@ import pandas as pd
 # Imports the CLASS only for a type annotation (stamp_provenance's contract parameter) — it never
 # constructs one, so it carries the documented line-scoped exemption to the TID251 ban that keeps
 # FileContract construction inside config/contracts/ (see src/config/CLAUDE.md).
-from filings-b3._internal.utils.tabular_reader import FileContract  # noqa: TID251
+from filings_b3._internal.utils.tabular_reader import FileContract  # noqa: TID251
 
 
 # Runtime type-checking engine — layout-agnostic (utils.typing in MVC, chassis.typing in
 # DDD; always injected, just at different paths). mypy reads the single TYPE_CHECKING
 # import (no redefinition); at runtime the try/except picks whichever layout shipped.
 if TYPE_CHECKING:
-	from filings-b3._internal.utils.typing import type_checker
+	from filings_b3._internal.utils.typing import type_checker
 else:
 	try:
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 	except ModuleNotFoundError:  # DDD ships the engine as chassis.typing
-		from filings-b3._internal.utils.typing import type_checker
+		from filings_b3._internal.utils.typing import type_checker
 
 
 # Read the file in 1 MiB blocks so hashing a large artifact never loads it whole into memory.
@@ -152,7 +154,7 @@ def stamp_provenance(
 		A copy of ``df_input`` with the six provenance columns appended (text columns as the
 		nullable ``string`` dtype; ``updated_at`` as tz-aware UTC).
 	"""
-	dt_fetched = datetime.now(UTC)
+	dt_fetched = datetime.now(timezone.utc)
 	str_run_id = _new_run_id()
 	dict_text_provenance = {
 		"url": str_url,

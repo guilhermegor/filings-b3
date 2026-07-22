@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Generic, TypeVar
 
-from filings-b3._internal.utils.typing import ABCTypeCheckerMeta
+from filings_b3._internal.utils.typing import ABCTypeCheckerMeta
 
 
 T = TypeVar("T")

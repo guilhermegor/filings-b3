@@ -33,7 +33,7 @@ from typing import Any
 from beartype import beartype
 from beartype.door import die_if_unbearable
 
-from filings-b3._internal.utils.typing.policy import CONF
+from filings_b3._internal.utils.typing.policy import CONF
 
 
 _type_check = beartype(conf=CONF)

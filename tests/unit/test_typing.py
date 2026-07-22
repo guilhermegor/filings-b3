@@ -2,7 +2,7 @@
 
 import pytest
 
-from filings-b3._internal.utils.typing import TypeChecker, type_checker
+from filings_b3._internal.utils.typing import TypeChecker, type_checker
 
 
 class _Sample(metaclass=TypeChecker):

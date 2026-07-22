@@ -14,8 +14,8 @@ from __future__ import annotations
 import logging
 from typing import cast
 
-from filings-b3._internal.utils.logs import CreateLog, LogLevel
-from filings-b3._internal.utils.retry import LogEmitter
+from filings_b3._internal.utils.logs import CreateLog, LogLevel
+from filings_b3._internal.utils.retry import LogEmitter
 
 
 # The levels the rich printer accepts; an unrecognised level degrades to ``warning`` so the

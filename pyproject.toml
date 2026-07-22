@@ -13,7 +13,7 @@ homepage = "https://guilhermegor.github.io/filings-b3/"
 documentation = "https://guilhermegor.github.io/filings-b3/"
 repository = "https://github.com/guilhermegor/filings-b3"
 keywords = ["filings-b3", "python", "library"]
-packages = [{ include = "filings-b3", from = "src" }]
+packages = [{ include = "filings_b3", from = "src" }]
 # Keep internal dev docs out of the distributed wheel/sdist.
 exclude = ["src/**/CLAUDE.md"]
 package-mode = true

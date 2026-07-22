@@ -31,20 +31,20 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
 
-from filings-b3._internal.utils.br_identifiers import is_valid_cnpj, unmask_cnpj
-from filings-b3._internal.utils.dtypes import apply_dtypes
+from filings_b3._internal.utils.br_identifiers import is_valid_cnpj, unmask_cnpj
+from filings_b3._internal.utils.dtypes import apply_dtypes
 
 
 # Runtime type-checking engine — layout-agnostic (utils.typing in MVC, chassis.typing in
 # DDD; always injected, just at different paths). mypy reads the single TYPE_CHECKING
 # import (no redefinition); at runtime the try/except picks whichever layout shipped.
 if TYPE_CHECKING:
-	from filings-b3._internal.utils.typing import TypeChecker, type_checker
+	from filings_b3._internal.utils.typing import TypeChecker, type_checker
 else:
 	try:
-		from filings-b3._internal.utils.typing import TypeChecker, type_checker
+		from filings_b3._internal.utils.typing import TypeChecker, type_checker
 	except ModuleNotFoundError:  # DDD ships the engine as chassis.typing
-		from filings-b3._internal.utils.typing import TypeChecker, type_checker
+		from filings_b3._internal.utils.typing import TypeChecker, type_checker
 
 
 @dataclass(frozen=True)

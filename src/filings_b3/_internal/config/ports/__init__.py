@@ -7,7 +7,7 @@ API — consumers import the concrete adapters, never these ports. Re-export eac
 callers use one import: ``from <pkg>._internal.config.ports import ExamplePort``.
 """
 
-from filings-b3._internal.config.ports.example_port import ExamplePort
+from filings_b3._internal.config.ports.example_port import ExamplePort
 
 
 __all__ = ["ExamplePort"]
