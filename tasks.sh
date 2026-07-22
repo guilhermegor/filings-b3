@@ -69,16 +69,6 @@ init() {
 	enable_security
 }
 
-bump_version() {
-	# cz computes the next semver from Conventional Commits, writes it to pyproject.toml,
-	# regenerates CHANGELOG.md, commits "bump: X.Y.Z", and creates the vX.Y.Z tag.
-	# --no-verify bypasses the commit hooks for this machine-generated commit: its single-line
-	# "bump: …" message can't satisfy gitlint's body-required rule, and the pre-commit
-	# test/format hooks are irrelevant to a pyproject + CHANGELOG bump (same rationale as
-	# bin/git_merge_to_main.sh). Run this on a feature branch (before `git_merge_to_main`).
-	poetry_exec run cz bump --yes --no-verify --git-output-to-stderr
-	echo "Version bumped to $(poetry_exec run cz version --project 2>/dev/null || poetry_exec version -s)"
-}
 
 changelog() {
 	# Regenerate CHANGELOG.md from git tags + Conventional Commits (cz derives sections
@@ -282,7 +272,6 @@ Virtual Environment
   enable_pages         Enable GitHub Pages once (gh-pages branch w/ mike, else Actions); needs gh + repo-admin, else skips
   enable_repo_rules    Apply the pr-quality-gate ruleset + merge settings; needs gh + repo-admin, else skips
   enable_security      Enable private vuln reporting + Dependabot alerts/security updates; needs gh + repo-admin, else skips
-  bump_version         Bump version from Conventional Commits, tag, and update CHANGELOG.md (cz bump)
   changelog            Regenerate CHANGELOG.md from git tags (cz changelog)
 
 Corporate CA
@@ -345,7 +334,6 @@ precommit) precommit ;;
 enable_pages) enable_pages ;;
 enable_repo_rules) enable_repo_rules ;;
 enable_security) enable_security ;;
-bump_version) bump_version ;;
 get_corporate_ca) get_corporate_ca ;;
 unit_tests) unit_tests ;;
 integration_tests) integration_tests ;;
