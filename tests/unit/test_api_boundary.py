@@ -22,6 +22,7 @@ a gate *because* it is hand-maintained.
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -330,17 +331,30 @@ def test_importing_the_package_pulls_no_optional_heavy_dependency() -> None:
 	satisfied by the module merely not being installed, so the gate would pass today and rot
 	the moment ``scraping`` lands in the dev environment. A clean interpreter asserts the real
 	property — that the import graph does not reach them — regardless of what is installed.
+
+	``PYTHONPATH`` is seeded from the parent's ``sys.path`` because this project uses a src
+	layout and pytest injects ``src`` via ``pythonpath`` in ``pytest.ini``. A bare subprocess
+	inherits none of that, so without this it resolves the package only when it happens to be
+	pip-installed into the environment — which is true on a dev machine and **not** guaranteed
+	on a CI runner whose cached venv skipped the project install. Inheriting the parent's
+	resolution path keeps the gate measuring the import *graph*, never the install *method*;
+	``sys.modules`` still starts empty in the child, which is the property under test.
 	"""
 	str_code = (
 		f"import {_PKG}, sys; "
 		f"print(','.join(sorted(m for m in {_HEAVY_MODULES!r} if m in sys.modules)))"
 	)
+	dict_env = {
+		**os.environ,
+		"PYTHONPATH": os.pathsep.join(str_p for str_p in sys.path if str_p),
+	}
 	cls_proc = subprocess.run(  # noqa: S603 - fixed argv, no shell, no user input
 		[sys.executable, "-c", str_code],
 		capture_output=True,
 		text=True,
 		check=False,
 		cwd=_REPO_ROOT,
+		env=dict_env,
 	)
 
 	assert cls_proc.returncode == 0, f"importing {_PKG} failed:\n{cls_proc.stderr}"

@@ -240,6 +240,47 @@ architecture, and a page consumers will not read is a page that rots.
 
 Status: **119 tests pass**, ruff clean.
 
+## CORRECTION (2026-07-22) — BDI is a JSON API, not a file-download family
+
+The first attempt put the **file-download** lifecycle (download → locate ZIP member → read by
+extension) in `daily_bulletin/_base_bdi_reader.py`. Checking the actual transport proved that
+wrong: **38 of the 39** BDI datasets are served by one paginated JSON API
+
+```
+https://arquivos.b3.com.br/bdi/table/<Endpoint>/<start>/<end>/<page>/<pageSize>
+{"table": {"columns": [{"name": "TckrSymb"}, …], "values": [[…]]}}   # [] ⇒ past the last page
+```
+
+so there is no filename in the path, no extension for `read_table` to dispatch on, and the rows
+are **positional arrays** that only acquire meaning zipped against `columns`. Pagination is part
+of the lifecycle, not an afterthought.
+
+Resolution — both bases are real, nothing was wasted:
+
+| Base | Serves | Lifecycle |
+|---|---|---|
+| `daily_bulletin/_base_bdi_reader.py` | 38 BDI datasets | paginate → persist → assemble → validate → type → stamp |
+| `search_trading_session/_base_pregao_reader.py` | 42 pregão datasets | download → locate member → read → stamp |
+
+The file-download base simply belonged to the *other* section all along — the `?filelist=…zip`
+family really is files. (`b3_bdi_stocks_trade_by_trade`, the 39th, serves CSV from
+`drp.b3.com.br` and will implement the port directly.)
+
+Two decisions taken while implementing:
+
+- **Raw JSON pages are downloaded to disk, then parsed from the file** — never parsed from an
+  in-memory response. With `path_raw` set, every page survives verbatim, including the original
+  PascalCase column names, so a *future* parser version can re-interpret an artifact fetched
+  today. A test asserts exactly that, because it is the datalake's whole reason to exist.
+- **`date_ref` is required, with no default.** The BDI endpoint is date-addressed. Defaulting to
+  "last business day" was rejected: whenever the guess is wrong (holiday, late publication,
+  backfill) it silently reads a *different* session, which is far worse than failing at
+  construction. It also avoids pulling in `wwdates` before a reader actually needs a calendar.
+
+Open follow-up: provenance hashes **page 1 only**. For a multi-page read that is a partial
+fingerprint — fine for identifying the source, insufficient for drift detection across the whole
+result set. Revisit when the drift job lands.
+
 ## Flagged — `_internal/utils/sidecar_metadata.py` is CVM-branded and unused
 
 The module exports **`cvm_meta_url()`** and documents CVM's `META/meta_<dataset>.txt`
