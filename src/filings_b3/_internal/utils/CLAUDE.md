@@ -15,10 +15,12 @@ choices — and keeps the dependency graph flat.
 `logs.py` (the in-repo `CreateLog` / `log_message` helper) is therefore **opt-in** at scaffold
 time. Even when present, prefer to inject it rather than import it directly.
 
-### Reference implementation — `retry.py`
+### Reference implementation — `retry/`
 
-`retry.py` is the starting point to copy. It defines a tiny injectable sink and defaults it to
-a stdlib-backed one, so nothing is imported unless the caller wants it:
+`retry/` (a package: `policy.py`, `backoff.py`, `log_emitter.py`, `_schedule.py`) is the
+starting point to copy. `log_emitter.py` defines a tiny injectable sink defaulted to a
+stdlib-backed one, so nothing is imported unless the caller wants it; `policy.py` bundles the
+schedule knobs into the immutable `RetryPolicy` a caller builds once and passes down:
 
 ```python
 import logging

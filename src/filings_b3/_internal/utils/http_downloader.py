@@ -96,6 +96,29 @@ class _NoRedirectHandler(request.HTTPRedirectHandler, metaclass=TypeChecker):
 _OPENER: request.OpenerDirector = request.build_opener(_NoRedirectHandler)
 
 
+@type_checker
+def url_filename(str_url: str) -> str:
+	"""Return a filesystem-safe download filename derived from a URL path.
+
+	Lives beside the downloader rather than in any one reader: every ingestion section needs
+	the same derivation, and a copy per section is a DRY violation waiting to diverge.
+
+	Parameters
+	----------
+	str_url : str
+		The source URL.
+
+	Returns
+	-------
+	str
+		The last path segment (e.g. ``IN250102.zip``), or ``"download"`` when the URL path
+		has no usable final segment (query-only download endpoints, as B3's
+		``pesquisapregao/download?filelist=…`` is).
+	"""
+	str_name = Path(urlsplit(str_url).path).name
+	return str_name if str_name else "download"
+
+
 @retry_with_backoff(
 	int_max_attempts=_DOWNLOAD_MAX_ATTEMPTS,
 	float_base_wait_s=_DOWNLOAD_BASE_WAIT_S,
