@@ -1,0 +1,9 @@
+/* Placeholder brand styles — shipped by the scaffold so a fresh site looks intentional.
+   Swap docs/assets/logo.png for your own brand asset, then tune size/placement here. */
+
+.hero-logo {
+    display: block;
+    margin: 1.5rem auto;   /* placement: `auto` side-margins center it; use `float:left|right` to align */
+    max-width: 240px;      /* size: change this one value to scale the landing image */
+    height: auto;
+}
