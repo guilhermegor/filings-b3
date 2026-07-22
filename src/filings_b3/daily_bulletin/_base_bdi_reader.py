@@ -57,7 +57,7 @@ import pandas as pd
 from filings_b3._internal.config.ports.ingestion_reader import IngestionReader
 from filings_b3._internal.utils.dtypes import apply_dtypes
 from filings_b3._internal.utils.provenance import (
-	hash_artifact,
+	hash_artifacts,
 	resolve_package_version,
 	stamp_provenance,
 )
@@ -226,14 +226,17 @@ class _BaseBdiReader(IngestionReader):
 
 		with raw_workspace(self.path_raw) as path_dir:
 			list_frames: list[pd.DataFrame] = []
+			# Every page fetched, in page order — the terminating empty page included, since it
+			# is as much a part of what the source said as the pages carrying rows.
+			list_pages: list[Path] = []
 			str_first_url = ""
-			path_first: Path | None = None
 
 			for int_page in range(1, _MAX_PAGES + 1):
 				str_url = self.build_url(int_page)
 				path_page = download_file(str_url, path_dir / f"page_{int_page:04d}.json")
-				if path_first is None:
-					str_first_url, path_first = str_url, path_page
+				list_pages.append(path_page)
+				if not str_first_url:
+					str_first_url = str_url
 
 				df_page = self._frame_from_payload(path_page)
 				if df_page.empty:
@@ -258,12 +261,13 @@ class _BaseBdiReader(IngestionReader):
 				raise ContractError(list_problems)
 
 			df_typed = apply_dtypes(df_all, self.dict_dtypes, list_date_cols=self.list_date_cols)
-			# The loop's first iteration always runs, so path_first is set by this point.
+			# Every page is fingerprinted. Were only the first one hashed, a source change on
+			# any later page would go unnoticed — precisely the drift this column must catch.
 			return stamp_provenance(
 				df_typed,
 				str_first_url,
 				self.cls_contract,
-				hash_artifact(path_first) if path_first is not None else "",
+				hash_artifacts(list_pages),
 				resolve_package_version(_DISTRIBUTION_NAME),
 			)
 

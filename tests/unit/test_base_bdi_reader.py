@@ -147,6 +147,50 @@ def test_raw_json_pages_are_kept_when_path_raw_is_set(_patch_pages: None, tmp_pa
 	)
 
 
+def test_content_hash_covers_every_page_not_just_the_first(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	"""Drift on a LATER page changes content_hash — the whole read is fingerprinted.
+
+	The regression this guards, end to end: the base once stamped ``hash_artifact(page_1)``, so
+	a source whose first page was byte-identical but whose second page gained a row produced
+	the *same* ``content_hash``. The lake would then report "source unchanged" for a source
+	that had drifted — a silent failure in the mechanism built to catch silent failures.
+
+	Parameters
+	----------
+	monkeypatch : pytest.MonkeyPatch
+		Fixture used to replace the download seam.
+	"""
+
+	def _make_download(list_page_two_rows: list[list[object]]) -> object:
+		def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+			int_page = int(str_url.rstrip("/").split("/")[-2])
+			dict_pages = {
+				1: _page([["PETR4", 1.5]]),  # identical across both reads
+				2: _page(list_page_two_rows),  # this is what drifts
+			}
+			path_dest.parent.mkdir(parents=True, exist_ok=True)
+			path_dest.write_bytes(dict_pages.get(int_page, _page([])))
+			return path_dest
+
+		return _fake_download
+
+	monkeypatch.setattr(
+		"filings_b3._internal.utils.http_downloader.download_file",
+		_make_download([["VALE3", 2.5]]),
+	)
+	str_hash_before = _SampleBdiReader(_DATE).read()["content_hash"].iloc[0]
+
+	monkeypatch.setattr(
+		"filings_b3._internal.utils.http_downloader.download_file",
+		_make_download([["VALE3", 2.5], ["ITUB4", 3.5]]),
+	)
+	str_hash_after = _SampleBdiReader(_DATE).read()["content_hash"].iloc[0]
+
+	assert str_hash_before != str_hash_after
+
+
 def test_default_workspace_leaves_no_pages_behind(_patch_pages: None) -> None:
 	"""Without path_raw the pages are temporary — nothing persists."""
 	cls_reader = _SampleBdiReader(_DATE)
