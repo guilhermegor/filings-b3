@@ -1,0 +1,88 @@
+name: PR Reconcile
+
+# Close the linked issues (and delete the head branches) of MERGED PRs.
+#
+# WHY THIS EXISTS — the finding, measured, not suspected: a PR whose body says `Closes #N` and is
+# merged by GitHub's NATIVE AUTO-MERGE (armed by a workflow using github.token) merges and leaves
+# #N **open**. The link is parsed (`closingIssuesReferences` contains it) — the only variable is
+# WHO merged. Manually merging the identical PR closes the issue. Same root cause takes a second
+# casualty: `delete_branch_on_merge: true` does NOT fire either, so the branch survives.
+# (Dependabot branches still vanish because *Dependabot* cleans up its own — a coincidence that
+# neatly hides this bug.)
+#
+# Why it matters more than it looks: a Projects "closed → Done" automation keys on the ISSUE
+# closing, so cards rot in "In review" while the code is shipped and merged. And it SCALES WITH
+# SUCCESS — once auto-merge is opt-out, every docs/ci/deps PR takes this path, so **the better
+# auto-merge works, the more the backlog lies**.
+#
+# ⚠️ THE TWO PATHS ARE NOT EQUAL — know which one is load-bearing:
+#   * `pull_request: [closed]` — the FAST path. Immediate WHEN it fires, but it is itself
+#     suppressed for a bot merge (measured: a provoked bot merge at 11:16:08Z produced no run;
+#     the latest reconcile run was 11:06:36Z, ten minutes EARLIER). Treat it as an optimization.
+#   * `schedule` — the GUARANTEED BACKSTOP AND THE ACTUAL FIX. Scheduled events are exempt from
+#     the GITHUB_TOKEN "no new workflow runs" suppression, so this path runs whether or not the
+#     event path did. Cost: up to one sweep interval of latency. Accept that rather than reaching
+#     for a PAT.
+on:
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "17 3 * * *" # daily backstop
+  workflow_dispatch:
+
+permissions:
+  contents: write # delete the merged head branch
+  issues: write # close the linked issues
+  pull-requests: read
+
+jobs:
+  reconcile:
+    name: Close linked issues of merged PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          # On the event path, reconcile just this PR; on schedule/dispatch, sweep a window.
+          EVENT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged && github.event.pull_request.number || '' }}
+          SWEEP_LIMIT: "30"
+        run: |
+          set -euo pipefail
+
+          reconcile_pr() {
+            pr="$1"
+            # Only act on a MERGED pr; a closed-unmerged PR must not close its issues.
+            merged=$(gh pr view "$pr" --json merged --jq .merged 2>/dev/null || echo "false")
+            [ "$merged" = "true" ] || return 0
+
+            # Close each linked issue that is still OPEN (an already-closed one is a no-op).
+            for issue in $(gh pr view "$pr" --json closingIssuesReferences \
+                            --jq '.closingIssuesReferences[].number' 2>/dev/null || true); do
+              state=$(gh issue view "$issue" --json state --jq .state 2>/dev/null || echo "")
+              if [ "$state" = "OPEN" ]; then
+                echo "PR #$pr -> closing issue #$issue"
+                gh issue close "$issue" --reason completed \
+                  --comment "Closed by #$pr (reconciled: a bot-performed merge does not close linked issues)." \
+                  || echo "::warning::could not close issue #$issue"
+              fi
+            done
+
+            # Second casualty of the same root cause: delete_branch_on_merge does not fire either.
+            ref=$(gh pr view "$pr" --json headRefName --jq .headRefName 2>/dev/null || echo "")
+            same_repo=$(gh pr view "$pr" --json isCrossRepository --jq .isCrossRepository 2>/dev/null || echo "true")
+            if [ -n "$ref" ] && [ "$same_repo" = "false" ]; then
+              # An already-deleted branch is a no-op, not an error.
+              gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$ref" >/dev/null 2>&1 \
+                && echo "PR #$pr -> deleted branch $ref" || true
+            fi
+          }
+
+          if [ -n "${EVENT_PR:-}" ]; then
+            reconcile_pr "$EVENT_PR"
+          else
+            # Bounded sweep: walk the most recently merged PRs and reconcile anything missed.
+            for pr in $(gh pr list --state merged --limit "$SWEEP_LIMIT" --json number --jq '.[].number'); do
+              reconcile_pr "$pr"
+            done
+          fi

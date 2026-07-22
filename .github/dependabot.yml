@@ -1,0 +1,60 @@
+# Dependabot — ordinary VERSION updates.
+#
+# Distinct from Dependabot SECURITY updates (auto-PRs for known vulnerabilities), which are a repo
+# toggle enabled by `make enable_security`, not config. This file handles routine bumps.
+#
+# WHY lockfile-only: poetry.lock is committed and CI installs from it and refuses to re-lock (a
+# stale lock fails loud rather than silently re-resolving). That means CI tests the FROZEN locked
+# versions while consumers get whatever the loose `>=` ranges allow — the two drift apart.
+# `versioning-strategy: lockfile-only` closes that gap: it refreshes the lock (so CI tests roughly
+# what a consumer installs) but NEVER rewrites the pyproject ranges. That matters for a library —
+# narrowing a range on a consumer's behalf is not this project's call — and it keeps
+# pyproject <-> lock in sync, so the CI lock-sync guard is never tripped.
+#
+# Tuned for a solo maintainer: minor+patch are GROUPED into one PR (low-risk, one review), while
+# majors arrive on their own so they get scrutiny. Each bump lands as an isolated PR, so a bad one
+# reddens that PR and never `main`. Note that a linter bump (ruff/mypy) can occasionally red a PR
+# or ask for a reformat — that is the system working.
+# ⚠️ NO `labels:` HERE ON PURPOSE. bin/pr_gate.py already labels every PR by changed path
+# (risk:*/size:*/gate:*), so a second taxonomy here would be one nothing reads — and worse,
+# Dependabot posts an ERROR COMMENT ON EVERY PR IT OPENS when a declared label does not
+# exist in the repo (a fresh repo has none of them), for months, while the config looks fine.
+# When a scaffold ships both a bot config and a labeling gate, only ONE may own labels.
+version: 2
+
+updates:
+  - package-ecosystem: "pip" # Poetry projects use the pip ecosystem
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    versioning-strategy: "lockfile-only"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # One PR for all low-risk bumps; majors are excluded so they arrive individually.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Pin the MAJOR line of any dependency whose major is a deliberate support decision.
+      # pandas is tested on BOTH 2.x and 3.x here, so a major bump is a project decision, not a
+      # Dependabot one. Add an entry per such dependency; remove one when you stop straddling.
+      - dependency-name: "pandas"
+        update-types:
+          - "version-update:semver-major"
+
+  # Keeps CI off deprecated Actions runtimes (e.g. a Node version GitHub is sunsetting).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns:
+          - "*"

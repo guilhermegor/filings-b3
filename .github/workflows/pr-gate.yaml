@@ -1,0 +1,86 @@
+name: PR Quality Gate
+
+# Runs bin/pr_gate.py on every PR: labels risk/size/gate, publishes one sticky comment, and arms
+# native auto-merge for the low-risk classes.
+#
+# ⚠️ TRIGGERS ON pull_request ONLY (plus a manual backfill below) — never on workflow_run.
+# `workflow_run` only fires from the workflow file on the DEFAULT branch, so it can never fire for
+# the PR that introduces this gate (chicken-and-egg, untestable on its own PR) and stays fragile
+# afterwards. The gate instead POLLS the checks in-run until they are terminal, which is
+# self-contained and works on any branch.
+#
+# ⚠️ A pull_request-driven gate NEVER re-evaluates a PR that was already open when you change the
+# policy: it keeps the labels and auto-merge state it got under the OLD rules until some new PR
+# event touches it. That is not a bug — the gate simply never ran again. So after merging a change
+# to the classification/consent rules in bin/pr_gate.py, or to allow_auto_merge /
+# delete_branch_on_merge, run the `workflow_dispatch` below with `backfill: true` to re-evaluate
+# every open PR at once (for Dependabot PRs, `@dependabot rebase` also works).
+on:
+  pull_request:
+    # `labeled`/`unlabeled` are included so adding or removing `do-not-merge` takes effect at once.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Re-evaluate EVERY open PR (use after changing gate policy)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+  statuses: read
+
+concurrency:
+  # A new push cancels the previous still-polling run instead of two gates racing on one comment.
+  group: pr-gate-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: github.event_name == 'pull_request'
+    name: Classify and gate this PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run PR gate
+        # All event data goes through env — never interpolated into the run: script.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python bin/pr_gate.py
+
+  backfill:
+    if: github.event_name == 'workflow_dispatch' && inputs.backfill
+    name: Re-evaluate every open PR (policy backfill)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Re-run the gate on all open PRs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          # Re-decide every PR that was judged under the old policy. Bounded, sequential, and
+          # tolerant: one PR's failure must not abort the backfill.
+          for n in $(gh pr list --state open --limit 100 --json number --jq '.[].number'); do
+            echo "::group::PR #$n"
+            PR_NUMBER="$n" python bin/pr_gate.py || echo "::warning::gate failed for PR #$n"
+            echo "::endgroup::"
+          done
