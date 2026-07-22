@@ -5,18 +5,19 @@ source must carry, which must hold valid CNPJs — *not* data access, so contrac
 ``config`` beside the other declarative config (``inputs.yaml``, ``connection_db``), imported
 by the model loaders and the controller boundary.
 
-Convention: **one file per source** under this package (``cadastro.py``, ``orders.py``, …),
-each defining a single ``FileContract`` instance; this aggregator re-exports them (plus the
+Convention: **one file per source** under this package (``bdi_stocks_summary.py``, …), each
+defining a single ``FileContract`` instance; this aggregator re-exports them (plus the
 machinery from ``utils.tabular_reader``) so callers import from one place:
-``from config.contracts import EXAMPLE_SOURCE, find_file_problems``.
+``from filings_b3._internal.config.contracts import BDI_STOCKS_SUMMARY, find_file_problems``.
 
-``EXAMPLE_SOURCE`` is a reference instance — copy ``example_source.py`` per real source and
-delete the example once your own contracts exist.
+A contract names only the columns a consumer **depends on**, not every column the source sends:
+B3 adding a column must not break a read, while a removed one must fail loudly. Extra source
+columns still flow through to the frame (and must be typed in the reader's ``dict_dtypes``).
 """
 
 from __future__ import annotations
 
-from filings_b3._internal.config.contracts.example_source import EXAMPLE_SOURCE
+from filings_b3._internal.config.contracts.bdi_stocks_summary import BDI_STOCKS_SUMMARY
 from filings_b3._internal.utils.tabular_reader import (
 	ContractError,
 	FileContract,
@@ -24,4 +25,9 @@ from filings_b3._internal.utils.tabular_reader import (
 )
 
 
-__all__ = ["EXAMPLE_SOURCE", "ContractError", "FileContract", "find_file_problems"]
+__all__ = [
+	"BDI_STOCKS_SUMMARY",
+	"ContractError",
+	"FileContract",
+	"find_file_problems",
+]

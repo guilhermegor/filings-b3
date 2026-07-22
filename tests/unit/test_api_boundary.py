@@ -68,7 +68,12 @@ _INTERNAL_DIR = _PKG_DIR / "_internal"
 # *promoted* out of `_internal` by re-exporting it from the package `__init__` (filings-cvm
 # does exactly this with `RetryPolicy`); what this snapshot forbids is that happening by
 # accident.
-_PUBLIC_SURFACE: frozenset[str] = frozenset({"__version__"})
+_PUBLIC_SURFACE: frozenset[str] = frozenset(
+	{
+		"__version__",
+		"BdiStocksSummaryReader",
+	}
+)
 
 # Optional-extra modules that must never be imported at package-import time. The `Reader` port
 # is plain HTTP + tabular parsing; a source genuinely needing a browser or a PDF engine gets a

@@ -18,6 +18,21 @@ reader supplies only :attr:`str_endpoint`, its :class:`FileContract`, and its dt
 (The 39th, ``b3_bdi_stocks_trade_by_trade``, serves a CSV from ``drp.b3.com.br`` and implements
 the port directly rather than bending a hook onto this class.)
 
+Pagination is **declared, never assumed**
+-----------------------------------------
+``…/<page>/<pageSize>`` looks uniformly paginated. It is not, and guessing corrupts data:
+
+- **32 of the 38** datasets are single-page — hence :attr:`int_max_pages` defaults to ``1``.
+- **5** are genuinely paginated and set ``int_max_pages = None`` to read until exhaustion.
+- **3** are actively hostile: the endpoint **echoes the same rows for every page number**. A
+  naive "loop until ``values`` is empty" would append those rows once per page up to the
+  ceiling, silently multiplying the dataset — a corruption no contract check would catch,
+  because every row is individually valid.
+
+So an unbounded read additionally compares each page's digest against the previous page's and
+stops on the first repeat. Declaring the mode is the primary guard; the digest check is the
+backstop for an endpoint that starts echoing after a reader was written.
+
 Each page is still **downloaded to a file** rather than held in memory, so the untouched JSON
 response lands in the workspace and — when ``path_raw`` is set — survives as the datalake's
 bronze record. A contract break is then replayable against the exact bytes that caused it.
@@ -57,6 +72,7 @@ import pandas as pd
 from filings_b3._internal.config.ports.ingestion_reader import IngestionReader
 from filings_b3._internal.utils.dtypes import apply_dtypes
 from filings_b3._internal.utils.provenance import (
+	hash_artifact,
 	hash_artifacts,
 	resolve_package_version,
 	stamp_provenance,
@@ -115,6 +131,12 @@ class _BaseBdiReader(IngestionReader):
 		Columns coerced to ``datetime.date`` (default ``None``).
 	int_page_size : int
 		Rows requested per page (default 1 000, B3's cap).
+	int_max_pages : int or None
+		How many pages this dataset actually has: ``1`` (the default, and correct for most BDI
+		datasets), an explicit count, or ``None`` to read until the source is exhausted. Get
+		this wrong towards ``None`` on an echoing endpoint and the dataset multiplies; get it
+		wrong towards ``1`` on a paginated one and rows are silently dropped — so set it from
+		the source's observed behaviour, never from the URL shape.
 	"""
 
 	# Required — declared as bare annotations so an unset subclass raises AttributeError; the
@@ -127,6 +149,9 @@ class _BaseBdiReader(IngestionReader):
 	# Optional knobs with sensible defaults; a subclass overrides only what differs.
 	list_date_cols: Sequence[str] | None = None
 	int_page_size: int = _DEFAULT_PAGE_SIZE
+	# Pagination is DECLARED, never assumed — see the module docstring. One page by default,
+	# which is what 32 of the 38 BDI datasets serve; a genuinely paginated dataset sets None.
+	int_max_pages: int | None = 1
 
 	def __init_subclass__(cls, **kwargs: object) -> None:
 		"""Fail loudly at subclass creation if a required class attribute is missing.
@@ -231,12 +256,28 @@ class _BaseBdiReader(IngestionReader):
 			list_pages: list[Path] = []
 			str_first_url = ""
 
-			for int_page in range(1, _MAX_PAGES + 1):
+			int_ceiling = self.int_max_pages if self.int_max_pages is not None else _MAX_PAGES
+			str_prev_digest = ""
+
+			for int_page in range(1, int_ceiling + 1):
 				str_url = self.build_url(int_page)
 				path_page = download_file(str_url, path_dir / f"page_{int_page:04d}.json")
 				list_pages.append(path_page)
 				if not str_first_url:
 					str_first_url = str_url
+
+				# An endpoint that echoes the previous page would otherwise be appended over and
+				# over until the ceiling, silently multiplying the dataset. Comparing digests
+				# catches it on the FIRST repeat, before any duplicate row reaches the frame.
+				str_digest = hash_artifact(path_page)
+				if str_digest == str_prev_digest:
+					self._cls_logger.log_message(
+						f"{self.str_source_key}: page {int_page} repeats page {int_page - 1} — "
+						"endpoint is not paginated; stopping",
+						"warning",
+					)
+					break
+				str_prev_digest = str_digest
 
 				df_page = self._frame_from_payload(path_page)
 				if df_page.empty:
@@ -247,9 +288,11 @@ class _BaseBdiReader(IngestionReader):
 				)
 				list_frames.append(df_page)
 			else:
-				self._cls_logger.log_message(
-					f"{self.str_source_key}: stopped at the {_MAX_PAGES}-page ceiling", "warning"
-				)
+				if self.int_max_pages is None:
+					self._cls_logger.log_message(
+						f"{self.str_source_key}: stopped at the {_MAX_PAGES}-page ceiling",
+						"warning",
+					)
 
 			df_all = (
 				pd.concat(list_frames, ignore_index=True)
