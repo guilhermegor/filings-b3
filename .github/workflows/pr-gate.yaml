@@ -27,7 +27,12 @@ on:
         default: false
 
 permissions:
-  contents: read
+  # `contents: write` is required by enablePullRequestAutoMerge, NOT optional: auto-merge
+  # eventually pushes a merge commit to the base branch, so a read-only token is rejected with
+  # "Resource not accessible by integration". With `contents: read` the mutation failed on every
+  # PR while the gate still reported `eligible=True` — reproduced under a plain workflow_dispatch
+  # backfill, so it is the declared permission, not the Dependabot token restriction.
+  contents: write
   pull-requests: write
   checks: read
   statuses: read

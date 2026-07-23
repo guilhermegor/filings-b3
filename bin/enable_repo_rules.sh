@@ -60,7 +60,24 @@ RULESET_NAME="pr-quality-gate"
 #
 # then list the ones that must gate merges. While empty, the rule is simply not added, and CI
 # still runs on every PR — it just does not block the merge button.
-REQUIRED_CHECKS=()
+REQUIRED_CHECKS=(
+	# Populated per the procedure above, from check runs observed on BOTH PR shapes — a normal
+	# PR (#115) and a Dependabot PR (#1). Every name below reported on both, so none can hang.
+	"lint"
+	"build"
+	"Run Automated Tests (ubuntu-latest)"
+	"Run Automated Tests (windows-latest)"
+	"Run Automated Tests (macos-latest)"
+	# Defence-in-depth beside the ruleset's own `code_scanning` rule (which gates on alert
+	# SEVERITY across every PR type, and is the enforcement that actually inspects code).
+	# ⚠️ On a Dependabot PR this is `neutral` — "no analysis performed", not "analysis passed" —
+	# because CodeQL spawns no `Analyze (…)` runs there. It therefore satisfies the requirement
+	# vacuously on those PRs; the `code_scanning` rule is what covers them.
+	"CodeQL"
+	# DELIBERATELY ABSENT: `Analyze (python)` / `Analyze (actions)`. They carry the real analysis
+	# verdict, but exist ONLY on normal PRs — requiring one would block every Dependabot PR
+	# forever, the exact permanent-block failure the warning above describes.
+)
 
 require_gh() {
 	# gh must be installed and authenticated. Missing either is a skip, not a failure.
