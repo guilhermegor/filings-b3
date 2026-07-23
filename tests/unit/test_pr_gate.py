@@ -231,3 +231,54 @@ def test_graphql_success_requires_an_empty_errors_key() -> None:
 	)
 	assert gate.graphql_succeeded(None) is False
 	assert gate.graphql_succeeded({}) is False
+
+
+def test_completes_an_eligible_green_pr_that_could_not_be_armed() -> None:
+	"""The no-babysitting case: eligible, green, un-armable → the gate finishes it.
+
+	GitHub refuses to arm auto-merge on an already-mergeable PR, so without this an eligible PR
+	whose checks went green BEFORE the gate ran sits open forever. That is not rare — it happens
+	on every backfill, every reopen, and every time `do-not-merge` is removed after CI passed.
+	"""
+	assert gate.should_complete_merge(True, False, "success", "clean") is True
+
+
+def test_never_completes_when_auto_merge_was_armed() -> None:
+	"""If GitHub is holding the merge, it owns it — the gate must not race it."""
+	assert gate.should_complete_merge(True, True, "success", "clean") is False
+
+
+def test_never_completes_an_ineligible_pr() -> None:
+	"""src/tests/other are excluded from auto-merge, and the fallback must not smuggle them in."""
+	assert gate.should_complete_merge(False, False, "success", "clean") is False
+
+
+@pytest.mark.parametrize("str_state", ["pending", "failure"])
+def test_never_completes_unless_the_gate_itself_sees_success(str_state: str) -> None:
+	"""A PR whose axes are not all green is never merged, whatever GitHub says.
+
+	This is the belt to `mergeable_state`'s braces: it stops a PR whose required checks have not
+	reported at all from being merged just because nothing is currently failing.
+
+	Parameters
+	----------
+	str_state : str
+		A non-success gate state.
+	"""
+	assert gate.should_complete_merge(True, False, str_state, "clean") is False
+
+
+@pytest.mark.parametrize("str_mergeable", ["blocked", "behind", "dirty", "unknown", "unstable"])
+def test_only_githubs_own_clean_verdict_authorises_the_merge(str_mergeable: str) -> None:
+	"""Only `clean` merges — the ruleset decides, never this script's own reading of the checks.
+
+	`unknown` is in this list deliberately: GitHub computes mergeability asynchronously, so a
+	freshly-pushed PR reports `unknown` before it settles. Treating that as permission would
+	merge on missing information.
+
+	Parameters
+	----------
+	str_mergeable : str
+		A GitHub mergeable_state that must NOT authorise a merge.
+	"""
+	assert gate.should_complete_merge(True, False, "success", str_mergeable) is False
