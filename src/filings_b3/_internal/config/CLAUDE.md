@@ -34,14 +34,19 @@ on a violation before types are applied).
   single `FileContract` constant. New input → new file.
 - `contracts/__init__.py` re-exports every contract **and** the machinery
   (`FileContract`, `find_file_problems` from `_internal.utils.tabular_reader`), so callers
-  use one import: `from <pkg>._internal.config.contracts import EXAMPLE_SOURCE`.
+  use one import: `from <pkg>._internal.config.contracts import BDI_STOCKS_SUMMARY`.
 - A contract that constrains nothing is still explicit: `FileContract(name, key, (), ())`.
 - **`contracts/` is the ONLY place a `FileContract` is constructed** — statically enforced
   by ruff (`TID251`). Loaders import the instances; they never build one inline.
 
-`EXAMPLE_SOURCE` is a reference instance — copy `example_source.py` per real source and
-delete the example once your own contracts exist. Drop this whole sub-package if your
-library never reads tabular inputs.
+The scaffold's `EXAMPLE_SOURCE` reference instance has been **deleted** — real contracts exist
+now (`bdi_stocks_summary.py`), which is exactly when the rule says the example goes. Add one
+file per new source. Drop this whole sub-package if your library never reads tabular inputs.
+
+A contract lists only the columns a consumer **depends on**, never every column the source
+sends: B3 adding a column must not break a read, while a removed one must fail loudly. Extra
+source columns still flow through to the frame, so the reader must type them in `dict_dtypes` —
+otherwise they reach the datalake with whatever pandas inferred.
 
 ## The `ports/` sub-package (opt-in)
 

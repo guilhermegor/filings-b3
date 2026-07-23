@@ -31,6 +31,8 @@ also references ``stamp_provenance`` — so a contract-checked read cannot ship 
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 # `datetime.UTC` is a 3.11+ alias for `timezone.utc`; this package's floor is 3.10, where the
 # alias does not exist (ImportError at import time), so use the long-standing spelling.
 from datetime import datetime, timezone
@@ -93,6 +95,43 @@ def hash_artifact(path_file: Path) -> str:
 
 
 @type_checker
+def hash_artifacts(seq_paths: Sequence[Path]) -> str:
+	"""Return one ``sha256`` digest covering **every** artifact of a single logical read.
+
+	Some sources answer one logical read with several artifacts: a paginated API returning N
+	JSON pages, a source split across per-period files, a scrape spanning several responses.
+	Hashing only the first artifact would make :func:`stamp_provenance`'s ``content_hash`` a
+	**partial** fingerprint — and a partial fingerprint silently defeats the very thing the
+	column exists for: if page 1 is unchanged but page 3 gains a column, the hash matches and
+	the drift goes undetected. This folds all of them into one digest, so any byte changing in
+	any artifact changes the stamp.
+
+	The digest is computed over the artifacts' **hex digests**, not their concatenated bytes,
+	so a huge multi-page read never has to be held in memory. It is always a *composite* — for
+	a single artifact it therefore differs from :func:`hash_artifact` of that same file. That is
+	deliberate: a dataset that grows from one page to two must not silently change what its
+	hash *means*. Single-artifact readers keep calling :func:`hash_artifact`.
+
+	Parameters
+	----------
+	seq_paths : sequence of pathlib.Path
+		The artifacts of one read, in a **stable** order (a paginated reader passes them in
+		page order). The order is part of the digest: reordering the same files yields a
+		different hash, which is what makes a re-paginated source detectable.
+
+	Returns
+	-------
+	str
+		The composite ``sha256`` hex digest. An empty sequence yields the digest of no bytes,
+		the well-defined "this read produced no artifacts" value.
+	"""
+	cls_digest = hashlib.sha256()
+	for path_file in seq_paths:
+		cls_digest.update(hash_artifact(path_file).encode("ascii"))
+	return cls_digest.hexdigest()
+
+
+@type_checker
 def resolve_package_version(str_distribution: str) -> str:
 	"""Resolve an installed distribution's version, tolerating an uninstalled tree.
 
@@ -142,8 +181,11 @@ def stamp_provenance(
 		several readers share one URL (e.g. N members of one ZIP) or many datasets share a
 		bronze table.
 	str_content_hash : str
-		The ``sha256`` of the downloaded artifact bytes (from :func:`hash_artifact`), shared by
-		every row so the lake can detect a changed source without re-parsing.
+		The ``sha256`` of the downloaded artifact bytes, shared by every row so the lake can
+		detect a changed source without re-parsing. Use :func:`hash_artifact` when the read
+		fetched **one** artifact, and :func:`hash_artifacts` when it fetched several (paginated
+		API, per-period files): passing only the first artifact's hash makes this a partial
+		fingerprint that misses drift in every other artifact.
 	str_package_version : str
 		The producing package's version (from :func:`resolve_package_version`), so rows made by
 		a buggy version are identifiable and re-ingestible after a fix.

@@ -12,22 +12,24 @@ from pathlib import Path
 
 import pytest
 
-from filings_b3._internal.config.contracts import EXAMPLE_SOURCE
 from filings_b3._internal.utils.http_downloader import url_filename
 from filings_b3._internal.utils.tabular_reader import ContractError, FileContract
 from filings_b3.search_trading_session._base_pregao_reader import _BasePregaoReader
 
 
-# EXAMPLE_SOURCE requires columns ("code", "amount"); the fixture below satisfies it.
+# Contracts are normally constructed only in config/contracts (ruff TID251); tests are exempt,
+# and a throwaway contract keeps this file independent of whichever real datasets exist.
+_CONTRACT = FileContract("Sample Pregao", "sample_pregao", ("code", "amount"), ())
+# The contract requires ("code", "amount"); the fixture below satisfies it.
 _FIXTURE_CSV: bytes = b"code;amount\nABC;1.50\nDEF;2.25\n"
 _FAKE_URL: str = "https://www.b3.com.br/data/sample.csv"
 
 
 class _SampleReader(_BasePregaoReader):
-	"""Minimal concrete adapter over the shipped EXAMPLE_SOURCE contract (test-only)."""
+	"""Minimal concrete adapter over the throwaway contract (test-only)."""
 
 	str_source_key = "sample_reader"
-	cls_contract = EXAMPLE_SOURCE
+	cls_contract = _CONTRACT
 	dict_dtypes = {"code": "string", "amount": "float64"}
 
 	def build_url(self) -> str:
@@ -64,7 +66,7 @@ def test_run_returns_typed_contract_validated_frame(_patch_download: None) -> No
 	"""read() yields the source columns typed as declared, plus provenance columns."""
 	df_out = _SampleReader().read()
 
-	assert list(df_out.columns) == list(EXAMPLE_SOURCE.output_columns)
+	assert list(df_out.columns) == list(_CONTRACT.output_columns)
 	assert len(df_out) == 2
 	assert str(df_out["code"].dtype) == "string"
 	assert str(df_out["amount"].dtype) == "float64"
@@ -76,7 +78,7 @@ def test_run_stamps_source_url_provenance(_patch_download: None) -> None:
 	df_out = _SampleReader().read()
 
 	assert (df_out["url"] == _FAKE_URL).all()
-	assert df_out["source_key"].iloc[0] == EXAMPLE_SOURCE.str_source_key
+	assert df_out["source_key"].iloc[0] == _CONTRACT.str_source_key
 
 
 def test_run_raises_contract_error_when_required_column_missing(
@@ -113,7 +115,7 @@ def test_missing_required_attr_raises_at_subclass_definition() -> None:
 
 		class _Incomplete(_BasePregaoReader):
 			str_source_key = "incomplete"
-			cls_contract = EXAMPLE_SOURCE
+			cls_contract = _CONTRACT
 			# dict_dtypes deliberately omitted
 
 			def build_url(self) -> str:
