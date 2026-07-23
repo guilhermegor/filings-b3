@@ -8,6 +8,7 @@ its declarations actually produce a correct frame end to end, offline.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 import json
 from pathlib import Path
 
@@ -78,7 +79,7 @@ def test_read_returns_the_contract_columns_typed(_patch_download: None) -> None:
 		assert str_col in df_out.columns
 	assert str(df_out["TCKR_SYMB"].dtype) == "string"
 	assert str(df_out["NMBR_TRADES_DAY"].dtype) == "Int64"
-	assert str(df_out["VLM_TRADED_DAY"].dtype) == "float64"
+	assert all(isinstance(cls_v, Decimal) for cls_v in df_out["VLM_TRADED_DAY"])
 
 
 def test_every_source_column_is_explicitly_typed(_patch_download: None) -> None:
@@ -93,9 +94,12 @@ def test_every_source_column_is_explicitly_typed(_patch_download: None) -> None:
 	df_out = BdiStocksSummaryReader(_DATE).read()
 	set_provenance = set(BDI_STOCKS_SUMMARY.PROVENANCE_COLUMNS)
 	set_source_cols = {str_col for str_col in df_out.columns if str_col not in set_provenance}
+	set_declared = set(BdiStocksSummaryReader.dict_dtypes) | set(
+		BdiStocksSummaryReader.list_decimal_cols
+	)
 
-	assert set_source_cols == set(BdiStocksSummaryReader.dict_dtypes), (
-		"every column the source sends must be declared in dict_dtypes"
+	assert set_source_cols == set_declared, (
+		"every column the source sends must be declared in dict_dtypes or list_decimal_cols"
 	)
 	assert str(df_out["COL_ORDER"].dtype) == "Int64"
 
@@ -106,7 +110,24 @@ def test_read_preserves_the_source_values(_patch_download: None) -> None:
 	dict_petr = df_out[df_out["TCKR_SYMB"] == "PETR4"].iloc[0]
 
 	assert dict_petr["NMBR_TRADES_DAY"] == 125_430
-	assert dict_petr["VLM_TRADED_DAY"] == pytest.approx(1_984_223_115.42)
+	assert dict_petr["VLM_TRADED_DAY"] == Decimal("1984223115.42")
+
+
+def test_traded_volume_is_exact_not_approximate(_patch_download: None) -> None:
+	"""The traded volume equals the source **exactly** — no tolerance, no drift.
+
+	This is the assertion a ``float64`` column cannot pass. Parsed as a binary float,
+	``1984223115.42`` becomes ``1984223115.4200000762939453125``: close enough to print
+	correctly, wrong enough that summing a session's instruments and reconciling against B3's
+	published total misses by a hair, with nothing to point at. Note the equality here is
+	exact — ``pytest.approx`` would defeat the purpose of the test.
+	"""
+	df_out = BdiStocksSummaryReader(_DATE).read()
+
+	assert df_out["VLM_TRADED_DAY"].iloc[0] == Decimal("1984223115.42")
+	assert Decimal(str(df_out["VLM_TRADED_DAY"].iloc[0])) == Decimal("1984223115.42")
+	# Summing money must stay exact too — this is what the warehouse will do.
+	assert sum(df_out["VLM_TRADED_DAY"]) == Decimal("3217228025.52")
 
 
 def test_read_stamps_this_readers_source_key(_patch_download: None) -> None:

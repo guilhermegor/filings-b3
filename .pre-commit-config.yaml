@@ -137,6 +137,18 @@ repos:
           - python
         pass_filenames: false
 
+      # Structural gate against binary floats in ingested source columns. float64 stores
+      # 1984223115.42 as 1984223115.4200000762939453125 — an irreversible, silent loss no
+      # contract check or eyeballed frame reveals. Use list_decimal_cols (exact Decimal) or
+      # text; a genuinely dimensionless value opts out with "# dtype-ok: <reason>".
+      - id: check-dtypes
+        name: numeric dtype policy check (no binary floats)
+        entry: bash bin/poetry_exec.sh run python bin/check_dtypes.py
+        language: system
+        types:
+          - python
+        pass_filenames: false
+
       # Structural gate for the canonical docs skeleton — every canonical page (English slug)
       # exists AND is registered in mkdocs.yml nav; MkDocs builds an unregistered page anyway,
       # so it silently vanishes from navigation. Keys on slugs, never localized nav titles.

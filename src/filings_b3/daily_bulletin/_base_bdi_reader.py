@@ -50,19 +50,29 @@ It is a **library** base, not a service base:
   ``_internal`` seams.
 - Logging is an **injected** :class:`LogEmitter` (stdlib default), never a hard-imported backend.
 
+Numbers are never binary floats
+------------------------------
+The payload is parsed with ``parse_float=Decimal``. Python's default would turn
+``1984223115.42`` into a float holding ``1984223115.4200000762939453125`` — the source's exact
+value destroyed **before** any dtype could be applied, irreversibly and silently. Any column
+whose fractional part carries meaning is declared in :attr:`list_decimal_cols` and kept exact;
+no precision is *chosen* here, since that is a downstream decision this layer cannot make.
+
 A concrete BDI reader is tiny::
 
     class BdiStocksSummaryReader(_BaseBdiReader):
         str_source_key = "bdi_stocks_summary"
         str_endpoint = "DailyAverageStocks"
         cls_contract = BDI_STOCKS_SUMMARY   # from _internal.config.contracts
-        dict_dtypes = {"TCKR_SYMB": "str", "VLM_TRADED_DAY": "float64"}
+        dict_dtypes = {"TCKR_SYMB": "str", "NMBR_TRADES_DAY": "Int64"}
+        list_decimal_cols = ("VLM_TRADED_DAY",)
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from decimal import Decimal
 import json
 from pathlib import Path
 import re
@@ -129,6 +139,10 @@ class _BaseBdiReader(IngestionReader):
 		Column→dtype mapping enforced via ``apply_dtypes`` (must be set by the subclass).
 	list_date_cols : sequence of str or None
 		Columns coerced to ``datetime.date`` (default ``None``).
+	list_decimal_cols : sequence of str or None
+		Columns coerced to exact :class:`decimal.Decimal` (default ``None``). Every number
+		whose fractional part carries meaning belongs here — money, volumes, rates, quantities
+		— never a binary float dtype in :attr:`dict_dtypes`.
 	int_page_size : int
 		Rows requested per page (default 1 000, B3's cap).
 	int_max_pages : int or None
@@ -148,6 +162,8 @@ class _BaseBdiReader(IngestionReader):
 
 	# Optional knobs with sensible defaults; a subclass overrides only what differs.
 	list_date_cols: Sequence[str] | None = None
+	# Columns coerced to exact Decimal — any number whose fractional part carries meaning.
+	list_decimal_cols: Sequence[str] | None = None
 	int_page_size: int = _DEFAULT_PAGE_SIZE
 	# Pagination is DECLARED, never assumed — see the module docstring. One page by default,
 	# which is what 32 of the 38 BDI datasets serve; a genuinely paginated dataset sets None.
@@ -303,7 +319,12 @@ class _BaseBdiReader(IngestionReader):
 			if list_problems:
 				raise ContractError(list_problems)
 
-			df_typed = apply_dtypes(df_all, self.dict_dtypes, list_date_cols=self.list_date_cols)
+			df_typed = apply_dtypes(
+				df_all,
+				self.dict_dtypes,
+				list_date_cols=self.list_date_cols,
+				list_decimal_cols=self.list_decimal_cols,
+			)
 			# Every page is fingerprinted. Were only the first one hashed, a source change on
 			# any later page would go unnoticed — precisely the drift this column must catch.
 			return stamp_provenance(
@@ -331,8 +352,12 @@ class _BaseBdiReader(IngestionReader):
 		pd.DataFrame
 			The page's rows under ``UPPER_SNAKE_CASE`` column names, or an empty frame.
 		"""
+		# Decimal parsing here is load-bearing, not a nicety. Left to its default, json turns
+		# a traded volume into a binary float that already holds a slightly different number,
+		# so the source's exact value is gone BEFORE any dtype can be applied. Parsing to
+		# Decimal keeps the source text exact; apply_dtypes then preserves it.
 		dict_payload: dict[str, dict[str, list[object]]] = json.loads(
-			path_page.read_text(encoding="utf-8")
+			path_page.read_text(encoding="utf-8"), parse_float=Decimal
 		)
 		dict_table = dict_payload.get("table") or {}
 		list_values: list[object] = dict_table.get("values") or []

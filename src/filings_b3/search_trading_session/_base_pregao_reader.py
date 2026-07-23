@@ -37,7 +37,8 @@ A concrete reader is tiny — it names its file code off the shared
     class InstrumentsFileReader(_BasePregaoReader):
         str_source_key = "instruments_file"
         cls_contract = INSTRUMENTS_FILE     # from _internal.config.contracts
-        dict_dtypes = {"code": "string", "price": "float64"}
+        dict_dtypes = {"code": "string"}
+        list_decimal_cols = ("price",)      # money stays exact — never a binary float
 
         def build_url(self) -> str:
             return f"{PREGAO_DOWNLOAD_BASE}?filelist=IN{self.date_ref:%y%m%d}.zip"
@@ -96,6 +97,9 @@ class _BasePregaoReader(IngestionReader):
 		Column→dtype mapping enforced via ``apply_dtypes`` (must be set by the subclass).
 	list_date_cols : sequence of str or None
 		Columns coerced to ``datetime.date`` (default ``None``).
+	list_decimal_cols : sequence of str or None
+		Columns coerced to exact :class:`decimal.Decimal` (default ``None``) — money and any
+		other value whose fractional part carries meaning, never a binary float dtype.
 	str_sheet : str
 		Excel worksheet name; ``""`` reads the first sheet, ignored for CSV/JSON.
 	str_csv_sep : str
@@ -110,6 +114,8 @@ class _BasePregaoReader(IngestionReader):
 
 	# Optional read knobs with sensible defaults; a subclass overrides only what differs.
 	list_date_cols: Sequence[str] | None = None
+	# Columns coerced to exact Decimal — money and anything whose fractional part matters.
+	list_decimal_cols: Sequence[str] | None = None
 	str_sheet: str = ""
 	str_csv_sep: str = ";"
 
@@ -231,6 +237,7 @@ class _BasePregaoReader(IngestionReader):
 				self.dict_dtypes,
 				self.cls_contract,
 				list_date_cols=self.list_date_cols,
+				list_decimal_cols=self.list_decimal_cols,
 				str_csv_sep=self.str_csv_sep,
 			)
 			return stamp_provenance(

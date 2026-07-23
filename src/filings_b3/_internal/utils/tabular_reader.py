@@ -131,6 +131,7 @@ def read_table(
 	dict_dtypes: dict[str, str],
 	cls_contract: FileContract,
 	list_date_cols: Sequence[str] | None = None,
+	list_decimal_cols: Sequence[str] | None = None,
 	str_csv_sep: str = ";",
 	list_columns: Sequence[str] | None = None,
 	str_encoding: str = "utf-8-sig",
@@ -160,6 +161,10 @@ def read_table(
 		The contract the file must satisfy (required).
 	list_date_cols : sequence of str, optional
 		Columns coerced to ``datetime.date``.
+	list_decimal_cols : sequence of str, optional
+		Columns coerced to exact :class:`decimal.Decimal`. Use this for money and any other
+		value whose fractional part carries meaning: a binary float dtype would destroy the
+		source's exact value irreversibly and silently.
 	str_csv_sep : str, optional
 		CSV delimiter (default ``";"``); ignored otherwise.
 	list_columns : sequence of str, optional
@@ -203,7 +208,7 @@ def read_table(
 		int_header_row,
 		int_csv_quoting,
 	)
-	return _finalize(df_raw, dict_dtypes, list_date_cols, cls_contract)
+	return _finalize(df_raw, dict_dtypes, list_date_cols, cls_contract, list_decimal_cols)
 
 
 @type_checker
@@ -369,6 +374,7 @@ def _finalize(
 	dict_dtypes: dict[str, str],
 	list_date_cols: Sequence[str] | None,
 	cls_contract: FileContract,
+	list_decimal_cols: Sequence[str] | None = None,
 ) -> pd.DataFrame:
 	"""Enforce the contract then apply declared types (shared, mandatory read tail).
 
@@ -382,6 +388,9 @@ def _finalize(
 		Columns coerced to ``datetime.date``.
 	cls_contract : FileContract
 		The contract validated before typing.
+	list_decimal_cols : sequence of str | None
+		Columns coerced to exact ``Decimal`` — money and any other value whose fractional
+		part carries meaning, which must never round-trip through a binary float.
 
 	Returns
 	-------
@@ -396,7 +405,12 @@ def _finalize(
 	list_problems = find_contract_problems(df_raw, cls_contract)
 	if list_problems:
 		raise ContractError(list_problems)
-	return apply_dtypes(df_raw, dict_dtypes=dict_dtypes, list_date_cols=list_date_cols)
+	return apply_dtypes(
+		df_raw,
+		dict_dtypes=dict_dtypes,
+		list_date_cols=list_date_cols,
+		list_decimal_cols=list_decimal_cols,
+	)
 
 
 @type_checker

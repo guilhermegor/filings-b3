@@ -44,9 +44,15 @@ class BdiStocksSummaryReader(_BaseBdiReader):
 	dict_dtypes : dict of {str: str}
 		Explicit column types — never pandas' inference. Covers **every** column the source
 		sends, not merely the contract's required ones: an untyped pass-through column would
-		reach the datalake with whatever pandas guessed from the first page's values. Volume is
-		``float64`` (a market aggregate, not a monetary amount needing decimal exactness); the
-		counts are nullable ``Int64`` so a suppressed value stays NA instead of becoming ``0``.
+		reach the datalake with whatever pandas guessed from the first page's values. Counts
+		are nullable ``Int64`` so a suppressed value stays NA rather than becoming ``0``.
+	list_decimal_cols : tuple of str
+		``VLM_TRADED_DAY`` is the session's traded financial volume in BRL — money, summed
+		downstream across instruments and sessions. It is kept as an exact
+		:class:`decimal.Decimal`; ``float64`` would store ``1984223115.42`` as
+		``1984223115.4200000762939453125``, and that error compounds through every aggregation
+		until a reconciliation against B3's own published totals misses by a hair, with nothing
+		to point at. The source's own scale is preserved — no precision is chosen here.
 	"""
 
 	str_source_key = "bdi_stocks_summary"
@@ -55,8 +61,8 @@ class BdiStocksSummaryReader(_BaseBdiReader):
 	dict_dtypes = {  # noqa: RUF012 - declarative class-level config, matching the base's contract
 		"TCKR_SYMB": "str",
 		"NMBR_TRADES_DAY": "Int64",
-		"VLM_TRADED_DAY": "float64",
 		# Absent from the contract, since no consumer need depend on it, yet still sent by the
 		# source and carried through — so it is typed here rather than left to inference.
 		"COL_ORDER": "Int64",
 	}
+	list_decimal_cols = ("VLM_TRADED_DAY",)
