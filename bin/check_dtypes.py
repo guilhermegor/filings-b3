@@ -42,49 +42,49 @@ _EXCLUDED_PARTS = {"typing", "chassis"}
 
 
 def check_file(str_path: str) -> int:
-	"""Report every banned float dtype declaration in one file.
+    """Report every banned float dtype declaration in one file.
 
-	Parameters
-	----------
-	str_path : str
-		Path to the Python source file to scan.
+    Parameters
+    ----------
+    str_path : str
+        Path to the Python source file to scan.
 
-	Returns
-	-------
-	int
-		The number of violations found (0 when clean).
-	"""
-	int_errors = 0
-	for int_no, str_line in enumerate(
-		pathlib.Path(str_path).read_text(encoding="utf-8").splitlines(), start=1
-	):
-		if not _RE_FLOAT_DTYPE.search(str_line):
-			continue
-		if _ALLOW_TOKEN in str_line:
-			continue
-		print(
-			f"❌ {str_path}:{int_no}: {str_line.strip()}\n"
-			f"   A binary float loses the source value irreversibly and silently. Use "
-			f"list_decimal_cols (exact Decimal) or text. If the value is genuinely "
-			f"dimensionless, annotate the line:  # {_ALLOW_TOKEN} <reason>"
-		)
-		int_errors += 1
-	return int_errors
+    Returns
+    -------
+    int
+        The number of violations found (0 when clean).
+    """
+    int_errors = 0
+    for int_no, str_line in enumerate(
+        pathlib.Path(str_path).read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not _RE_FLOAT_DTYPE.search(str_line):
+            continue
+        if _ALLOW_TOKEN in str_line:
+            continue
+        print(
+            f"❌ {str_path}:{int_no}: {str_line.strip()}\n"
+            f"   A binary float loses the source value irreversibly and silently. Use "
+            f"list_decimal_cols (exact Decimal) or text. If the value is genuinely "
+            f"dimensionless, annotate the line:  # {_ALLOW_TOKEN} <reason>"
+        )
+        int_errors += 1
+    return int_errors
 
 
 def _source_files() -> list[pathlib.Path]:
-	"""Collect every Python file under ``src/`` outside the exempt trees.
+    """Collect every Python file under ``src/`` outside the exempt trees.
 
-	Returns
-	-------
-	list[pathlib.Path]
-		Python source files to check.
-	"""
-	return sorted(
-		p for p in pathlib.Path("src").rglob("*.py") if _EXCLUDED_PARTS.isdisjoint(p.parts)
-	)
+    Returns
+    -------
+    list[pathlib.Path]
+        Python source files to check.
+    """
+    return sorted(
+        p for p in pathlib.Path("src").rglob("*.py") if _EXCLUDED_PARTS.isdisjoint(p.parts)
+    )
 
 
 if __name__ == "__main__":
-	total_errors = sum(check_file(str(p)) for p in _source_files())
-	sys.exit(1 if total_errors > 0 else 0)
+    total_errors = sum(check_file(str(p)) for p in _source_files())
+    sys.exit(1 if total_errors > 0 else 0)
