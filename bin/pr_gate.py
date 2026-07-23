@@ -326,15 +326,43 @@ def _graphql(str_query: str, dict_vars: dict):
     dict_vars : dict
         Query variables.
 
+    ⚠️ **GraphQL answers HTTP 200 even when the mutation FAILED** — the reason lives in the body's
+    ``errors`` key, so ``_api``'s status check (which only warns on 4xx/5xx) sees a success. A
+    caller that discards the return value therefore turns a rejected mutation into a silent
+    no-op: the gate reported ``eligible=True`` on every PR for weeks while auto-merge was never
+    actually enabled, and nothing anywhere said so. Surface them here, once, for every caller.
+
     Returns
     -------
     object
-        Parsed JSON, or ``None`` on error.
+        Parsed JSON, or ``None`` on a transport error. GraphQL-level errors are printed as
+        workflow warnings and left in the returned body for the caller to inspect.
     """
-    return _api("POST", f"{API}/graphql", {"query": str_query, "variables": dict_vars})
+    dict_resp = _api("POST", f"{API}/graphql", {"query": str_query, "variables": dict_vars})
+    for dict_err in (dict_resp or {}).get("errors") or []:
+        print(f"::warning::GraphQL error: {dict_err.get('message', dict_err)}")
+    return dict_resp
 
 
-def collect_axes(list_check_runs: list, dict_axis_rules: dict) -> tuple:
+def graphql_succeeded(dict_resp) -> bool:
+    """Return whether a GraphQL response carries no errors.
+
+    Parameters
+    ----------
+    dict_resp : object
+        The parsed response from :func:`_graphql` (``None`` on a transport failure).
+
+    Returns
+    -------
+    bool
+        True only when a body came back and it declares no ``errors``.
+    """
+    return bool(dict_resp) and not (dict_resp.get("errors") or [])
+
+
+def collect_axes(
+    list_check_runs: list, dict_axis_rules: dict, dict_absence_sentinels: dict = None
+) -> tuple:
     """Fold check-runs into per-axis states and the names of each axis's failing checks.
 
     ⚠️ Track the check that carries the real CONCLUSION, not an umbrella status. With CodeQL
@@ -342,7 +370,12 @@ def collect_axes(list_check_runs: list, dict_axis_rules: dict) -> tuple:
     non-success while awaiting a result for a new head SHA, while the ``Analyze (…)`` runs are the
     actual analyses — matching the umbrella makes the gate scream "failing" on a green PR.
 
-    ⚠️ An axis with **no check-run yet** on this head SHA is ⏳ *awaiting a result*, never ❌.
+    ⚠️ An axis with **no check-run yet** on this head SHA is ⏳ *awaiting a result*, never ❌ —
+    but "no result yet" must be distinguishable from "no result is coming". A **sentinel** makes
+    that call: when an axis's own checks are absent yet its sentinel has *completed*, nothing is
+    still in flight and the axis is satisfied. Without it the gate waits forever on a check that
+    will never be posted, times out at ``pending``, and silently declines to enable auto-merge
+    even on a PR it judged eligible.
 
     Parameters
     ----------
@@ -350,6 +383,10 @@ def collect_axes(list_check_runs: list, dict_axis_rules: dict) -> tuple:
         The ``check_runs`` array for the PR's head SHA.
     dict_axis_rules : dict of {str: tuple}
         Axis name -> name substrings identifying the checks that carry its conclusion.
+    dict_absence_sentinels : dict of {str: tuple}, optional
+        Axis name -> name substrings of a check whose *completion* proves the axis's own checks
+        are never coming. Used for CodeQL on Dependabot PRs, where the ``CodeQL`` umbrella
+        completes (neutral) without ever spawning the ``Analyze (…)`` runs the axis matches.
 
     Returns
     -------
@@ -357,6 +394,7 @@ def collect_axes(list_check_runs: list, dict_axis_rules: dict) -> tuple:
         ``(axis -> state, axis -> [failing check names])``.
     """
     dict_axes, dict_failing = {}, {}
+    dict_absence_sentinels = dict_absence_sentinels or {}
     for str_axis, tuple_matches in dict_axis_rules.items():
         list_mine = [
             r
@@ -364,7 +402,18 @@ def collect_axes(list_check_runs: list, dict_axis_rules: dict) -> tuple:
             if any(m.lower() in (r.get("name") or "").lower() for m in tuple_matches)
         ]
         if not list_mine:
-            dict_axes[str_axis] = "pending"  # no result YET != failure
+            tuple_sentinels = dict_absence_sentinels.get(str_axis, ())
+            list_sentinel = [
+                r
+                for r in list_check_runs
+                if any(s.lower() in (r.get("name") or "").lower() for s in tuple_sentinels)
+            ]
+            # A completed sentinel means the analysis ran and produced nothing for this axis —
+            # not that a result is still on its way.
+            if list_sentinel and all(r.get("status") == "completed" for r in list_sentinel):
+                dict_axes[str_axis] = "success"
+            else:
+                dict_axes[str_axis] = "pending"  # no result YET != failure
             continue
         list_failed = [
             r.get("name")
@@ -442,10 +491,16 @@ def main() -> int:
     # Arm auto-merge ONCE up front — it is independent of the poll below, because GitHub gates the
     # real merge on the ruleset's required checks, not on anything this script observes.
     if bool_eligible:
-        _graphql(
+        dict_am = _graphql(
             "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){clientMutationId}}",
             {"id": dict_pr.get("node_id")},
         )
+        # Report the OUTCOME, not the attempt. Discarding this is what let "eligible" and
+        # "auto-merge actually enabled" silently diverge on every PR.
+        if graphql_succeeded(dict_am):
+            print("auto-merge: enabled")
+        else:
+            print("::warning::auto-merge: NOT enabled — see the GraphQL error above")
 
     dict_axis_rules = {
         "tests": ("Run Automated Tests",),
@@ -453,6 +508,9 @@ def main() -> int:
         # Match the ANALYSES, not the `CodeQL` umbrella check (see collect_axes).
         "code scanning": ("Analyze",),
     }
+    # CodeQL posts its umbrella check but spawns NO `Analyze (…)` runs on a Dependabot PR, so
+    # waiting for one hangs the axis forever. A completed umbrella is proof none is coming.
+    dict_absence_sentinels = {"code scanning": ("CodeQL",)}
 
     dict_axes, dict_failing = {}, {}
     for int_attempt in range(int_max_polls):
@@ -460,7 +518,9 @@ def main() -> int:
             _api("GET", f"{API}/repos/{str_repo}/commits/{str_head_sha}/check-runs?per_page=100")
             or {}
         ).get("check_runs", [])
-        dict_axes, dict_failing = collect_axes(list_runs, dict_axis_rules)
+        dict_axes, dict_failing = collect_axes(
+            list_runs, dict_axis_rules, dict_absence_sentinels
+        )
         # Stop ONLY when every axis is terminal — never on `gate_state() != "pending"`, which
         # would freeze the comment on the first transient red while other checks still run.
         if axes_are_terminal(dict_axes):
