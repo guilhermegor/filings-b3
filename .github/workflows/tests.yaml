@@ -18,6 +18,66 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
 
 jobs:
+  # Lint is its OWN job so it emits a check run the PR gate can see. The gate maps its `lint`
+  # axis to check-run NAME prefixes ("Ruff", "mypy", "lint"); while these were steps inside the
+  # test matrix no such check run existed, so the axis stayed pending forever and auto-merge
+  # never enabled on any PR. It also runs once here instead of once per Linux matrix leg.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # The floor of `requires-python`: ruff's target-version and mypy's python_version pin the
+      # analysed semantics, and running the floor keeps the runtime from drifting above them.
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-in-project: true
+          virtualenvs-create: true
+          version: 2.2.1
+
+      - name: Load Cached Virtual Environment
+        id: cached-venv
+        uses: actions/cache@v3
+        with:
+          path: |
+            .venv
+            poetry.lock
+          key: venv-${{ runner.os }}-3.10-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install Dependencies
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+        # Same fail-loud-on-stale-lock contract as the test job: never regenerate the lock in
+        # CI, since that silently re-resolves every dependency to the latest in-range version.
+        run: |
+          if ! poetry check --lock; then
+            echo "::error::poetry.lock is out of sync with pyproject.toml — run 'poetry lock' locally and commit the result." >&2
+            exit 1
+          fi
+          poetry install --no-interaction --no-root
+
+      - name: Run Ruff Linting
+        run: poetry run ruff check src/ tests/ --config=ruff.toml
+
+      - name: Run Ruff Format Check
+        # Distinct from `ruff check` — CI must fail on unformatted code, not just lint issues.
+        run: poetry run ruff format --check src/ tests/ --config=ruff.toml
+
+      - name: Run Static Type Check (mypy)
+        # Run from src/ so it is the single package base (avoids the dual-root
+        # "found twice" error on the deeper DDD tree).
+        run: cd src && poetry run mypy --config-file ../mypy.ini .
+
   test:
     name: Run Automated Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -141,28 +201,6 @@ jobs:
         # must carry a docs/backlog ledger. CI runs its gates as explicit steps, not via
         # pre-commit, so this must be listed here or a hook-skipping contributor bypasses it.
         run: poetry run python bin/check_backlog_ledger.py
-
-      - name: Run Ruff Linting
-        if: runner.os == 'Linux'
-        run: |
-          poetry run ruff check src/ tests/ --config=ruff.toml
-          if [ $? -ne 0 ]; then
-            echo "Ruff found issues! Run 'ruff check src/ tests/' locally see details."
-            echo "To fix automatically, run: poetry run ruff check --fix src/ tests/"
-            exit 1
-          fi
-
-      - name: Run Ruff Format Check
-        if: runner.os == 'Linux'
-        # Mirrors the `ruff-format` pre-commit hook — CI must fail on unformatted code,
-        # not just flag lint issues. Fix locally with `poetry run ruff format src/ tests/`.
-        run: poetry run ruff format --check src/ tests/ --config=ruff.toml
-
-      - name: Run Static Type Check (mypy)
-        if: runner.os == 'Linux'
-        # Run from src/ so it is the single package base (avoids the dual-root
-        # "found twice" error on the deeper DDD tree).
-        run: cd src && poetry run mypy --config-file ../mypy.ini .
 
       - name: Run Non-Python Lint Gates (shell, sql, yaml)
         if: runner.os == 'Linux'

@@ -174,3 +174,60 @@ def test_render_comment_carries_the_sticky_marker_and_the_failing_names() -> Non
 	assert gate.COMMENT_MARKER in str_body
 	assert "Run Automated Tests (ubuntu)" in str_body
 	assert "risk:" in str_body and "deps" in str_body
+
+
+def test_axis_with_no_checks_and_no_sentinel_stays_pending() -> None:
+	"""Absent an explanation, a missing check-run is still 'awaiting a result'."""
+	dict_axes, _ = gate.collect_axes([], {"code scanning": ("Analyze",)})
+	assert dict_axes["code scanning"] == "pending"
+
+
+def test_completed_sentinel_resolves_an_axis_whose_checks_never_arrive() -> None:
+	"""A completed umbrella proves the axis's own checks are NOT coming — stop waiting.
+
+	The regression this guards froze the gate on every Dependabot PR: CodeQL posts its umbrella
+	check but spawns no ``Analyze (…)`` runs there, so the axis waited forever, the gate timed
+	out at ``pending``, and auto-merge was never enabled on a PR it had judged eligible.
+	"""
+	list_runs = [{"name": "CodeQL", "status": "completed", "conclusion": "neutral"}]
+	dict_axes, _ = gate.collect_axes(
+		list_runs, {"code scanning": ("Analyze",)}, {"code scanning": ("CodeQL",)}
+	)
+	assert dict_axes["code scanning"] == "success"
+
+
+def test_an_unfinished_sentinel_does_not_resolve_the_axis() -> None:
+	"""While the umbrella is still running, its analyses may yet appear — keep waiting."""
+	list_runs = [{"name": "CodeQL", "status": "in_progress", "conclusion": None}]
+	dict_axes, _ = gate.collect_axes(
+		list_runs, {"code scanning": ("Analyze",)}, {"code scanning": ("CodeQL",)}
+	)
+	assert dict_axes["code scanning"] == "pending"
+
+
+def test_real_analyses_still_win_over_the_sentinel() -> None:
+	"""When the analyses DO exist they carry the conclusion — the sentinel is only a fallback."""
+	list_runs = [
+		{"name": "CodeQL", "status": "completed", "conclusion": "neutral"},
+		{"name": "Analyze (python)", "status": "completed", "conclusion": "failure"},
+	]
+	dict_axes, dict_failing = gate.collect_axes(
+		list_runs, {"code scanning": ("Analyze",)}, {"code scanning": ("CodeQL",)}
+	)
+	assert dict_axes["code scanning"] == "failure"
+	assert dict_failing["code scanning"] == ["Analyze (python)"]
+
+
+def test_graphql_success_requires_an_empty_errors_key() -> None:
+	"""GraphQL answers HTTP 200 even when the mutation failed — the body decides.
+
+	This is what let 'eligible' and 'auto-merge actually enabled' diverge silently: the caller
+	discarded the response, and a rejected mutation looked exactly like a successful one.
+	"""
+	assert gate.graphql_succeeded({"data": {"enablePullRequestAutoMerge": {}}}) is True
+	assert (
+		gate.graphql_succeeded({"errors": [{"message": "Pull request is in clean status"}]})
+		is False
+	)
+	assert gate.graphql_succeeded(None) is False
+	assert gate.graphql_succeeded({}) is False
