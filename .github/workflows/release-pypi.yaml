@@ -93,10 +93,10 @@ jobs:
         python-version: ["3.12.8"]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set Up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -109,7 +109,7 @@ jobs:
 
       - name: Load Cached Virtual Environment
         id: cached-venv
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: |
             .venv
@@ -169,7 +169,7 @@ jobs:
           python -m build
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -184,7 +184,7 @@ jobs:
       id-token: write
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -208,12 +208,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -222,7 +222,7 @@ jobs:
         # NOTE: this GitHub-Release step exists ONLY here, not in release-test-pypi.yaml
         # (Test PyPI rehearses the publish, not the release). So it is never exercised by the
         # rehearsal — any change here debuts in production. Diff the two workflows when editing.
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG_NAME }}
           # Name the artifacts to ship — never `dist/*`. The scaffold tracks a 0-byte
@@ -252,13 +252,13 @@ jobs:
       NEW_VERSION: ${{ needs.details.outputs.new_version }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Full history so mike can read/rewrite the existing gh-pages version tree.
           fetch-depth: 0
 
       - name: Set Up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.x"
 
