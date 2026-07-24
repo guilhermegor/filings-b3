@@ -13,6 +13,15 @@ approval worth nothing. Native auto-merge (GraphQL `enablePullRequestAutoMerge`,
 the ruleset is green. So this script decides only **eligibility**; the *ruleset* decides whether it
 passed. Never let a gate script judge check results and merge.
 
+*One narrow exception, and why it does not breach the rule.* GitHub **refuses** to arm auto-merge
+on a PR that is already mergeable — there is nothing left to queue behind — so an eligible PR whose
+checks went green *before* the gate ran (a backfill, a reopen, or removing `do-not-merge` after CI
+finished) would otherwise sit open forever waiting for a human. `should_complete_merge` completes
+those, but only when **GitHub itself** reports `mergeable_state == "clean"`, i.e. every required
+check of the *ruleset* already passed. The ruleset still decides; the script only finishes a
+decision already made, and additionally requires its own axes to be `success`, so a PR whose
+required checks never reported can never slip through.
+
 **2. Gate on the changed PATHS, never on diff size.** "Auto-merge if the diff is small" is
 intuitive and **backwards** for contract-heavy code: the real failure mode is *semantic*. A
 one-character change to a schema constant is the smallest possible diff and the most dangerous —
@@ -189,6 +198,47 @@ def is_auto_mergeable(
     if str_size == SIZE_XL and not bool_lockfile_only:
         return False
     return BLOCK_LABEL not in list_labels
+
+
+def should_complete_merge(
+    bool_eligible: bool, bool_armed: bool, str_gate_state: str, str_mergeable_state: str
+) -> bool:
+    """Decide whether to finish an eligible PR that auto-merge could not be armed on.
+
+    GitHub **rejects** ``enablePullRequestAutoMerge`` for a PR that is already mergeable — there
+    is nothing left to queue behind. Without a fallback the gate warns and abandons it, and the
+    PR sits open forever waiting for a human. That fires whenever the checks finish *before* the
+    gate runs: a backfill, a reopen, or (most often) removing ``do-not-merge`` once CI is
+    already green.
+
+    This is **not** the gate judging check results and merging — the thing this file's header
+    forbids. It merges only when **GitHub itself** reports ``mergeable_state == "clean"``, which
+    means every required check of the *ruleset* passed. The ruleset still decides; this only
+    completes a decision already made. The gate's own ``success`` view is required *as well*, so
+    a PR whose required checks never reported (no axis terminal) can never slip through.
+
+    Parameters
+    ----------
+    bool_eligible : bool
+        From :func:`is_auto_mergeable`.
+    bool_armed : bool
+        Whether native auto-merge was successfully enabled (then GitHub merges it, not us).
+    str_gate_state : str
+        From :func:`gate_state` — must be ``"success"``.
+    str_mergeable_state : str
+        GitHub's own ``mergeable_state`` for the PR; only ``"clean"`` qualifies.
+
+    Returns
+    -------
+    bool
+        ``True`` only when an eligible, fully-green PR could not be armed and GitHub says it is
+        ready to merge right now.
+    """
+    if not bool_eligible or bool_armed:
+        return False
+    if str_gate_state != "success":
+        return False
+    return str_mergeable_state == "clean"
 
 
 def gate_state(dict_axes: dict) -> str:
@@ -490,6 +540,7 @@ def main() -> int:
 
     # Arm auto-merge ONCE up front — it is independent of the poll below, because GitHub gates the
     # real merge on the ruleset's required checks, not on anything this script observes.
+    bool_armed = False
     if bool_eligible:
         dict_am = _graphql(
             "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){clientMutationId}}",
@@ -497,10 +548,14 @@ def main() -> int:
         )
         # Report the OUTCOME, not the attempt. Discarding this is what let "eligible" and
         # "auto-merge actually enabled" silently diverge on every PR.
-        if graphql_succeeded(dict_am):
+        bool_armed = graphql_succeeded(dict_am)
+        if bool_armed:
             print("auto-merge: enabled")
         else:
-            print("::warning::auto-merge: NOT enabled — see the GraphQL error above")
+            # Not necessarily an error: GitHub refuses to arm a PR that is ALREADY mergeable.
+            # The fallback after the poll loop completes those, so an eligible green PR is never
+            # left waiting on a human.
+            print("::warning::auto-merge could not be armed — see any GraphQL error above")
 
     dict_axis_rules = {
         "tests": ("Run Automated Tests",),
@@ -541,6 +596,25 @@ def main() -> int:
     upsert_comment(
         str_repo, int_pr, render_comment(str_risk, str_size, dict_axes, bool_eligible, dict_failing)
     )
+    # Finish the job when auto-merge could not be armed because there was nothing to wait for.
+    # Re-read the PR: mergeable_state is computed asynchronously and is "unknown" right after a
+    # push, so the value fetched at the top of this run is not trustworthy here.
+    if should_complete_merge(bool_eligible, bool_armed, gate_state(dict_axes), "clean"):
+        dict_fresh = _api("GET", f"{API}/repos/{str_repo}/pulls/{int_pr}") or {}
+        str_mergeable = dict_fresh.get("mergeable_state") or "unknown"
+        if should_complete_merge(bool_eligible, bool_armed, gate_state(dict_axes), str_mergeable):
+            dict_merged = _api(
+                "PUT",
+                f"{API}/repos/{str_repo}/pulls/{int_pr}/merge",
+                {"merge_method": "squash"},
+            )
+            if (dict_merged or {}).get("merged"):
+                print("merge: completed (was already mergeable, so auto-merge could not arm)")
+            else:
+                print("::warning::merge: FAILED — this PR needs a human")
+        else:
+            print(f"merge: not completed — GitHub reports mergeable_state={str_mergeable}")
+
     print(f"risk={str_risk} size={str_size} eligible={bool_eligible} state={gate_state(dict_axes)}")
     return 0
 
