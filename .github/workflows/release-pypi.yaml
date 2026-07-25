@@ -237,49 +237,16 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
   # Versioned docs — runs ONLY after PyPI publish succeeds, so the site never advertises a
-  # version that failed to ship. mike deploys the released X.Y to the gh-pages branch under the
-  # `latest` alias and makes it the default, giving Material a version dropdown. A prerelease
-  # (suffix like a1/b1/rc1) builds the wheel but must NOT move `latest` — the guard below skips
-  # it. GitHub Pages must serve from the gh-pages branch (`make enable_pages`).
+  # version that failed to ship. Delegates to the standalone deploy-docs.yaml (workflow_call), so
+  # the mike logic lives in ONE place a maintainer can also trigger manually (workflow_dispatch)
+  # to refresh the site after a docs-only change. A prerelease (suffix like a1/b1/rc1) builds the
+  # wheel but must NOT move `latest` — the guard below skips the deploy. GitHub Pages must serve
+  # from the gh-pages branch (`make enable_pages`).
   deploy_docs:
-    name: Deploy Versioned Docs (mike)
     needs: [pypi, details]
     if: needs.details.outputs.suffix == ''
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/deploy-docs.yaml
+    with:
+      version: ${{ needs.details.outputs.new_version }}
     permissions:
       contents: write
-    env:
-      NEW_VERSION: ${{ needs.details.outputs.new_version }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-        with:
-          # Full history so mike can read/rewrite the existing gh-pages version tree.
-          fetch-depth: 0
-
-      - name: Set Up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.x"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-in-project: true
-          virtualenvs-create: true
-
-      - name: Install Docs Dependencies
-        run: poetry install --with docs
-
-      - name: Configure Git Identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy Docs with mike
-        run: |
-          # Version dropdown granularity is X.Y (the template bumps minor per release), so
-          # 1.4.2 and 1.4.7 share the "1.4" entry; `latest` always tracks the newest.
-          MINOR_VERSION="$(echo "$NEW_VERSION" | cut -d. -f1-2)"
-          poetry run mike deploy --update-aliases --push "$MINOR_VERSION" latest
-          poetry run mike set-default --push latest
