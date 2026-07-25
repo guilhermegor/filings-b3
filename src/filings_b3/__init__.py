@@ -19,7 +19,10 @@ layer. Nothing under ``filings_b3._internal`` is public API.
 
 from importlib.metadata import PackageNotFoundError, version
 
-from filings_b3.daily_bulletin import BdiStocksSummaryReader
+from filings_b3.daily_bulletin import (
+	BdiBtbLendingOpenPositionsReader,
+	BdiStocksSummaryReader,
+)
 
 
 try:
@@ -28,4 +31,8 @@ except PackageNotFoundError:  # pragma: no cover - source tree without an instal
 	__version__ = "0.0.0"
 
 
-__all__ = ["BdiStocksSummaryReader", "__version__"]
+__all__ = [
+	"BdiBtbLendingOpenPositionsReader",
+	"BdiStocksSummaryReader",
+	"__version__",
+]

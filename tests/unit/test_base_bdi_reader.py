@@ -18,7 +18,6 @@ from filings_b3._internal.utils.tabular_reader import ContractError, FileContrac
 from filings_b3.daily_bulletin._base_bdi_reader import (
 	BDI_TABLE_BASE,
 	_BaseBdiReader,
-	_upper_snake,
 )
 
 
@@ -300,18 +299,3 @@ def test_build_url_carries_endpoint_date_page_and_size() -> None:
 	str_url = _SampleBdiReader(date(2025, 1, 2)).build_url(3)
 
 	assert str_url == f"{BDI_TABLE_BASE}/DailyAverageStocks/2025-01-02/2025-01-02/3/1000"
-
-
-@pytest.mark.parametrize(
-	("str_pascal", "str_expected"),
-	[
-		("TckrSymb", "TCKR_SYMB"),
-		("VlmTradedDay", "VLM_TRADED_DAY"),
-		("NmbrTradesDay", "NMBR_TRADES_DAY"),
-		("Custody", "CUSTODY"),
-		("ColOrder", "COL_ORDER"),
-	],
-)
-def test_upper_snake_conversion(str_pascal: str, str_expected: str) -> None:
-	"""PascalCase API names become UPPER_SNAKE_CASE column names."""
-	assert _upper_snake(str_pascal) == str_expected

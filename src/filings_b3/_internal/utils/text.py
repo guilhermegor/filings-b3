@@ -29,6 +29,8 @@ else:
 
 
 _RE_WHITESPACE = re.compile(r"\s+")
+# PascalCase/camelCase boundary: "TckrSymb" -> "TCKR_SYMB", "VlmTradedDay" -> "VLM_TRADED_DAY".
+_RE_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 
 @type_checker
@@ -77,3 +79,24 @@ def safe_str(value: object, default: str = "") -> str:
 	if isinstance(value, float) and value != value:  # NaN is the only value != itself
 		return default
 	return str(value).strip()
+
+
+@type_checker
+def pascal_to_upper_snake(str_name: str) -> str:
+	"""Convert a PascalCase/camelCase name to ``UPPER_SNAKE_CASE``.
+
+	Splits on each lower→upper (or digit→upper) boundary and upper-cases the result, so
+	``"TckrSymb"`` becomes ``"TCKR_SYMB"`` and ``"VlmTradedDay"`` becomes ``"VLM_TRADED_DAY"``.
+	An all-caps acronym has no internal boundary, so ``"ISIN"`` stays ``"ISIN"``.
+
+	Parameters
+	----------
+	str_name : str
+		A PascalCase or camelCase identifier (e.g. an API column name).
+
+	Returns
+	-------
+	str
+		The snake-cased, upper-cased name.
+	"""
+	return _RE_CASE_BOUNDARY.sub("_", str_name).upper()

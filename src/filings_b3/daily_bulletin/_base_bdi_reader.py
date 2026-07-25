@@ -71,11 +71,11 @@ A concrete BDI reader is tiny::
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 import json
 from pathlib import Path
-import re
 
 import pandas as pd
 
@@ -94,7 +94,8 @@ from filings_b3._internal.utils.tabular_reader import (
 	FileContract,
 	find_contract_problems,
 )
-from filings_b3._internal.utils.typing import type_checker
+from filings_b3._internal.utils.text import pascal_to_upper_snake
+from filings_b3._internal.utils.typing import TypeChecker
 
 
 # Root every BDI dataset serves from. Declared once for the whole section so a reader names only
@@ -115,8 +116,21 @@ _REQUIRED_ATTRS: tuple[str, ...] = (
 # never returns an empty `values`) from looping forever against a live endpoint.
 _DEFAULT_PAGE_SIZE: int = 1_000
 _MAX_PAGES: int = 500
-# PascalCase/camelCase boundary: "TckrSymb" -> "TCKR_SYMB", "VlmTradedDay" -> "VLM_TRADED_DAY".
-_RE_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+@dataclass(frozen=True)
+class _Page(metaclass=TypeChecker):
+	"""One downloaded BDI page: its file, source URL, parsed rows, and content digest.
+
+	The value :meth:`_BaseBdiReader._read_page` returns and :meth:`_BaseBdiReader.read`
+	generalises over — grouping the four facts of a single page so the pagination loop reads as
+	orchestration rather than plumbing.
+	"""
+
+	path_file: Path
+	str_url: str
+	df_rows: pd.DataFrame
+	str_digest: str
 
 
 class _BaseBdiReader(IngestionReader):
@@ -240,12 +254,96 @@ class _BaseBdiReader(IngestionReader):
 		)
 
 	def read(self) -> pd.DataFrame:
-		"""Page through the endpoint and return one typed, provenance-stamped DataFrame.
+		"""Read the endpoint into one typed, provenance-stamped DataFrame.
 
-		Downloads each page into the workspace chosen by :attr:`path_raw` (kept when set),
-		stops at the first page whose ``values`` is empty, concatenates the pages, enforces
-		:attr:`cls_contract`, applies :attr:`dict_dtypes`, and stamps provenance against the
-		**first** page's URL and content hash.
+		Orchestrates two phases inside the raw workspace: :meth:`_paginate` loops
+		:meth:`_read_page` to collect the result's pages, then :meth:`_finalize` validates,
+		types, and stamps the assembled frame **once**.
+
+		Returns
+		-------
+		pd.DataFrame
+			The typed, contract-validated, provenance-stamped rows.
+
+		Raises
+		------
+		ContractError
+			If the assembled table violates :attr:`cls_contract` (raised by :meth:`_finalize`).
+		"""
+		with raw_workspace(self.path_raw) as path_dir:
+			list_frames, list_pages, str_first_url = self._paginate(path_dir)
+			return self._finalize(list_frames, list_pages, str_first_url)
+
+	def _paginate(self, path_dir: Path) -> tuple[list[pd.DataFrame], list[Path], str]:
+		"""Loop :meth:`_read_page` in page order until the source is exhausted (or echoes).
+
+		Stops at the first empty page, the first echoed page (see :meth:`_is_echoed_page`), or
+		the declared page ceiling — whichever comes first.
+
+		Parameters
+		----------
+		path_dir : pathlib.Path
+			Directory each raw JSON page is downloaded into.
+
+		Returns
+		-------
+		tuple of (list of pandas.DataFrame, list of pathlib.Path, str)
+			The row-bearing page frames, every downloaded page path (for hashing — the
+			terminating empty page included, since it is as much a part of what the source said
+			as the pages carrying rows), and the first page's URL (for provenance).
+		"""
+		list_frames: list[pd.DataFrame] = []
+		list_pages: list[Path] = []
+		str_first_url = ""
+		str_prev_digest = ""
+		int_ceiling = self.int_max_pages if self.int_max_pages is not None else _MAX_PAGES
+
+		for int_page in range(1, int_ceiling + 1):
+			cls_page = self._read_page(int_page, path_dir)
+			list_pages.append(cls_page.path_file)
+			str_first_url = str_first_url or cls_page.str_url
+
+			if self._is_echoed_page(cls_page, str_prev_digest, int_page):
+				break
+			str_prev_digest = cls_page.str_digest
+
+			if cls_page.df_rows.empty:
+				break
+			int_rows = len(cls_page.df_rows)
+			self._cls_logger.log_message(
+				f"{self.str_source_key}: page {int_page} fetched ({int_rows} rows)",
+				"info",
+			)
+			list_frames.append(cls_page.df_rows)
+		else:
+			if self.int_max_pages is None:
+				self._cls_logger.log_message(
+					f"{self.str_source_key}: stopped at the {_MAX_PAGES}-page ceiling",
+					"warning",
+				)
+		return list_frames, list_pages, str_first_url
+
+	def _finalize(
+		self,
+		list_frames: list[pd.DataFrame],
+		list_pages: list[Path],
+		str_first_url: str,
+	) -> pd.DataFrame:
+		"""Assemble the pages, enforce the contract, apply dtypes, and stamp provenance.
+
+		Runs **once** on the whole result, never per page: the contract validates the assembled
+		table, ``apply_dtypes`` coerces it, and provenance is stamped against the **first** page's
+		URL and the content hash of **every** page — so a source change on any later page is
+		caught, not just the first.
+
+		Parameters
+		----------
+		list_frames : list of pandas.DataFrame
+			The row-bearing page frames (empty when the endpoint returned no rows).
+		list_pages : list of pathlib.Path
+			Every downloaded page, hashed together into the provenance fingerprint.
+		str_first_url : str
+			The first page's URL, recorded as the row's source URL.
 
 		Returns
 		-------
@@ -256,84 +354,98 @@ class _BaseBdiReader(IngestionReader):
 		------
 		ContractError
 			If the assembled table violates :attr:`cls_contract`.
+		"""
+		df_all = (
+			pd.concat(list_frames, ignore_index=True)
+			if list_frames
+			else pd.DataFrame(columns=list(self.cls_contract.tuple_required))
+		)
+		list_problems = find_contract_problems(df_all, self.cls_contract)
+		if list_problems:
+			raise ContractError(list_problems)
+
+		df_typed = apply_dtypes(
+			df_all,
+			self.dict_dtypes,
+			list_date_cols=self.list_date_cols,
+			list_decimal_cols=self.list_decimal_cols,
+		)
+		return stamp_provenance(
+			df_typed,
+			str_first_url,
+			self.cls_contract,
+			hash_artifacts(list_pages),
+			resolve_package_version(_DISTRIBUTION_NAME),
+		)
+
+	def _is_echoed_page(self, cls_page: _Page, str_prev_digest: str, int_page: int) -> bool:
+		"""Return whether this page byte-for-byte repeats the previous one, logging if so.
+
+		Some BDI endpoints ignore the page number and **echo the same rows for every page**. A
+		naive "loop until ``values`` is empty" would append those rows once per page up to the
+		ceiling, silently multiplying the dataset — a corruption no contract check would catch,
+		since every row is individually valid. Comparing the untouched-bytes digest to the
+		previous page's catches it on the **first** repeat, before any duplicate row reaches the
+		frame.
+
+		Parameters
+		----------
+		cls_page : _Page
+			The page just read.
+		str_prev_digest : str
+			Content digest of the previous page (``""`` before the first page).
+		int_page : int
+			The 1-indexed page number, for the log message.
+
+		Returns
+		-------
+		bool
+			``True`` when the page repeats its predecessor (the caller must stop paginating).
+		"""
+		if cls_page.str_digest != str_prev_digest:
+			return False
+		self._cls_logger.log_message(
+			f"{self.str_source_key}: page {int_page} repeats page {int_page - 1} — "
+			"endpoint is not paginated; stopping",
+			"warning",
+		)
+		return True
+
+	def _read_page(self, int_page: int, path_dir: Path) -> _Page:
+		"""Download and parse a single page of this dataset's table — the atomic read unit.
+
+		Fetches exactly one page to a file in ``path_dir`` (kept when :attr:`path_raw` is set),
+		fingerprints the untouched bytes, and maps the positional ``values`` onto their column
+		names. It applies **no** contract and **no** dtypes — those run once, in :meth:`read`, on
+		the assembled frame.
+
+		Parameters
+		----------
+		int_page : int
+			The 1-indexed page to fetch.
+		path_dir : pathlib.Path
+			Directory the raw JSON page is downloaded into.
+
+		Returns
+		-------
+		_Page
+			The page's file path, source URL, parsed rows, and content digest.
 
 		Notes
 		-----
-		The download seam is imported inside this method rather than at module load, so that
-		importing the package never triggers network setup — only a reader that actually runs
-		pulls it in.
+		The download seam is imported inside this method, not at module load, so importing the
+		package never triggers network setup — only a reader that actually runs pulls it in.
 		"""
 		from filings_b3._internal.utils.http_downloader import download_file
 
-		with raw_workspace(self.path_raw) as path_dir:
-			list_frames: list[pd.DataFrame] = []
-			# Every page fetched, in page order — the terminating empty page included, since it
-			# is as much a part of what the source said as the pages carrying rows.
-			list_pages: list[Path] = []
-			str_first_url = ""
-
-			int_ceiling = self.int_max_pages if self.int_max_pages is not None else _MAX_PAGES
-			str_prev_digest = ""
-
-			for int_page in range(1, int_ceiling + 1):
-				str_url = self.build_url(int_page)
-				path_page = download_file(str_url, path_dir / f"page_{int_page:04d}.json")
-				list_pages.append(path_page)
-				if not str_first_url:
-					str_first_url = str_url
-
-				# An endpoint that echoes the previous page would otherwise be appended over and
-				# over until the ceiling, silently multiplying the dataset. Comparing digests
-				# catches it on the FIRST repeat, before any duplicate row reaches the frame.
-				str_digest = hash_artifact(path_page)
-				if str_digest == str_prev_digest:
-					self._cls_logger.log_message(
-						f"{self.str_source_key}: page {int_page} repeats page {int_page - 1} — "
-						"endpoint is not paginated; stopping",
-						"warning",
-					)
-					break
-				str_prev_digest = str_digest
-
-				df_page = self._frame_from_payload(path_page)
-				if df_page.empty:
-					break
-				self._cls_logger.log_message(
-					f"{self.str_source_key}: page {int_page} fetched ({len(df_page)} rows)",
-					"info",
-				)
-				list_frames.append(df_page)
-			else:
-				if self.int_max_pages is None:
-					self._cls_logger.log_message(
-						f"{self.str_source_key}: stopped at the {_MAX_PAGES}-page ceiling",
-						"warning",
-					)
-
-			df_all = (
-				pd.concat(list_frames, ignore_index=True)
-				if list_frames
-				else pd.DataFrame(columns=list(self.cls_contract.tuple_required))
-			)
-			list_problems = find_contract_problems(df_all, self.cls_contract)
-			if list_problems:
-				raise ContractError(list_problems)
-
-			df_typed = apply_dtypes(
-				df_all,
-				self.dict_dtypes,
-				list_date_cols=self.list_date_cols,
-				list_decimal_cols=self.list_decimal_cols,
-			)
-			# Every page is fingerprinted. Were only the first one hashed, a source change on
-			# any later page would go unnoticed — precisely the drift this column must catch.
-			return stamp_provenance(
-				df_typed,
-				str_first_url,
-				self.cls_contract,
-				hash_artifacts(list_pages),
-				resolve_package_version(_DISTRIBUTION_NAME),
-			)
+		str_url = self.build_url(int_page)
+		path_page = download_file(str_url, path_dir / f"page_{int_page:04d}.json")
+		return _Page(
+			path_file=path_page,
+			str_url=str_url,
+			df_rows=self._frame_from_payload(path_page),
+			str_digest=hash_artifact(path_page),
+		)
 
 	def _frame_from_payload(self, path_page: Path) -> pd.DataFrame:
 		"""Build a named DataFrame from one downloaded JSON page.
@@ -365,25 +477,8 @@ class _BaseBdiReader(IngestionReader):
 			return pd.DataFrame()
 
 		list_cols: list[str] = [
-			_upper_snake(str(dict_col["name"]))
+			pascal_to_upper_snake(str(dict_col["name"]))
 			for dict_col in dict_table.get("columns", [])
 			if isinstance(dict_col, dict)
 		]
 		return pd.DataFrame(list_values, columns=list_cols)
-
-
-@type_checker
-def _upper_snake(str_name: str) -> str:
-	"""Convert a PascalCase API column name to ``UPPER_SNAKE_CASE``.
-
-	Parameters
-	----------
-	str_name : str
-		The API's column name, e.g. ``"TckrSymb"``.
-
-	Returns
-	-------
-	str
-		The snake-cased, upper-cased name, e.g. ``"TCKR_SYMB"``.
-	"""
-	return _RE_CASE_BOUNDARY.sub("_", str_name).upper()
