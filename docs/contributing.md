@@ -248,7 +248,7 @@ gh workflow run pr-gate.yaml -f backfill=true   # reavalia todo PR aberto
 
 Um PR mergeado por **auto-merge nativo** (uma ação de bot) **não** fecha a issue vinculada e **não**
 deleta o branch, mesmo com `delete_branch_on_merge` ligado — ações feitas por bot são
-deliberadamente inertes para prevenir recursão de automação. O `pr-reconcile.yaml` conserta ambos:
+deliberadamente inertes para prevenir recursão de automação. O `reconcile-merged-prs.yaml` conserta ambos:
 fecha as issues do `Closes #N` e deleta o branch de head dos PRs mergeados. Seu **run diário
 agendado é o conserto real** — eventos agendados são isentos da supressão de "sem novos runs de
 workflow" que também engole o caminho rápido `pull_request: [closed]` de um merge de bot. A latência
