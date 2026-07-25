@@ -541,15 +541,62 @@
   
   
   
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boletim Diário (BDI)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Boletim Diário (BDI)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../api/reference/" class="md-nav__link">
+      <a href="../api/daily_bulletin/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Referência
+    Visão geral
   
 
     
@@ -558,6 +605,70 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/daily_bulletin/btb_lending_open_positions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Posições em aberto de BTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/daily_bulletin/stocks_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resumo de ações
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -822,7 +933,7 @@ quebra de contrato fica, assim, reproduzível contra os bytes exatos:</p>
 <li>Uma fonte que viola o contrato declarado levanta <code>ContractError</code> — uma coluna obrigatória
   ausente falha de forma barulhenta, em vez de silenciosa.</li>
 </ul>
-<p>Veja a <a href="../api/reference/">Referência da API</a> para a lista completa de <em>readers</em>.</p>
+<p>Veja a <a href="../api/">Referência da API</a> para a lista completa de <em>readers</em>, organizada por seção.</p>
 <hr />
 <h2 id="executando-os-testes">Executando os testes<a class="headerlink" href="#executando-os-testes" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>unit_tests<span class="w">         </span><span class="c1"># apenas testes unitários</span>
