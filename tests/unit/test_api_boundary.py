@@ -71,6 +71,7 @@ _INTERNAL_DIR = _PKG_DIR / "_internal"
 _PUBLIC_SURFACE: frozenset[str] = frozenset(
 	{
 		"__version__",
+		"BdiBtbLendingOpenPositionsReader",
 		"BdiStocksSummaryReader",
 	}
 )

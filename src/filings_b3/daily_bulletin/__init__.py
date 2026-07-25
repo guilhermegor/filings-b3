@@ -13,7 +13,10 @@ Every concrete reader is re-exported here, and again from the package root, so c
 never the import.
 """
 
+from filings_b3.daily_bulletin.btb_lending_open_positions import (
+	BdiBtbLendingOpenPositionsReader,
+)
 from filings_b3.daily_bulletin.stocks_summary import BdiStocksSummaryReader
 
 
-__all__ = ["BdiStocksSummaryReader"]
+__all__ = ["BdiBtbLendingOpenPositionsReader", "BdiStocksSummaryReader"]

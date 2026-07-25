@@ -143,8 +143,9 @@ allow-star-arg-any = false  # do not allow `*args` and `**kwargs` to be untyped
 ]
 # The seam itself is the one place allowed to call the bare pandas readers.
 "src/utils/tabular_reader.py" = ["TID251"]
-# config/contracts/ is the one place allowed to construct FileContract.
-"src/config/contracts/*.py" = ["TID251"]
+# config/contracts/ is the one place allowed to construct FileContract. `**` so the section
+# subpackages (contracts/daily_bulletin/…, mirroring src/<pkg>/<section>/) are covered too.
+"src/config/contracts/**/*.py" = ["TID251"]
 # Native DB-API 2.0 / SQLAlchemy connections have no shared stdlib type, so `Any` is the
 # honest return/param annotation for the raw-driver connection factory (MVC skeletons).
 "src/config/connection_db.py" = ["ANN401"]
@@ -160,4 +161,4 @@ allow-star-arg-any = false  # do not allow `*args` and `**kwargs` to be untyped
 # mirror the exemptions above for that path (`*` matches the single package segment). The
 # typing engine there is fully excluded (see [exclude]), so it needs no per-file rule.
 "src/*/_internal/utils/tabular_reader.py" = ["TID251"]
-"src/*/_internal/config/contracts/*.py" = ["TID251"]
+"src/*/_internal/config/contracts/**/*.py" = ["TID251"]

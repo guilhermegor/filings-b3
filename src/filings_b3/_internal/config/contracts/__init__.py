@@ -5,9 +5,10 @@ source must carry, which must hold valid CNPJs — *not* data access, so contrac
 ``config`` beside the other declarative config (``inputs.yaml``, ``connection_db``), imported
 by the model loaders and the controller boundary.
 
-Convention: **one file per source** under this package (``bdi_stocks_summary.py``, …), each
-defining a single ``FileContract`` instance; this aggregator re-exports them (plus the
-machinery from ``utils.tabular_reader``) so callers import from one place:
+Convention: contracts are grouped into **section subpackages that mirror
+``src/filings_b3/`` one-for-one** (``daily_bulletin/stocks_summary.py`` beside the reader
+``daily_bulletin/stocks_summary.py``), each file defining a single ``FileContract`` instance;
+the section aggregators re-export upward so callers still import from one place:
 ``from filings_b3._internal.config.contracts import BDI_STOCKS_SUMMARY, find_file_problems``.
 
 A contract names only the columns a consumer **depends on**, not every column the source sends:
@@ -17,7 +18,10 @@ columns still flow through to the frame (and must be typed in the reader's ``dic
 
 from __future__ import annotations
 
-from filings_b3._internal.config.contracts.bdi_stocks_summary import BDI_STOCKS_SUMMARY
+from filings_b3._internal.config.contracts.daily_bulletin import (
+	BDI_BTB_LENDING_OPEN_POSITIONS,
+	BDI_STOCKS_SUMMARY,
+)
 from filings_b3._internal.utils.tabular_reader import (
 	ContractError,
 	FileContract,
@@ -26,6 +30,7 @@ from filings_b3._internal.utils.tabular_reader import (
 
 
 __all__ = [
+	"BDI_BTB_LENDING_OPEN_POSITIONS",
 	"BDI_STOCKS_SUMMARY",
 	"ContractError",
 	"FileContract",
