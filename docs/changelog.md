@@ -1,15 +1,16 @@
 # **Changelog**
 
-Release history for this project. Entries are generated from
-[Conventional Commit](https://www.conventionalcommits.org/) messages via
-[commitizen](https://commitizen-tools.github.io/commitizen/), so the version headings below track
-what actually shipped.
+Histórico de releases deste projeto. As entradas são geradas a partir das mensagens de
+[Conventional Commit](https://www.conventionalcommits.org/) via
+[commitizen](https://commitizen-tools.github.io/commitizen/), então os títulos de versão abaixo
+acompanham o que de fato foi publicado.
 
-**How it updates:** the sections below are generated from the git tags and commit history by
-`cz changelog`. The published page is regenerated **fresh on every docs build** (the docs workflow
-runs `cz changelog` before `mkdocs build`), so it always reflects the default branch — CI never
-commits `CHANGELOG.md` back to the repo. You never edit it by hand. Regenerate or preview locally
-any time with `make changelog` (or `bash tasks.sh changelog`).
+**Como atualiza:** as seções abaixo são geradas a partir das tags do git e do histórico de commits
+pelo `cz changelog`. A página publicada é regenerada **do zero a cada build da documentação** (o
+workflow de docs roda `cz changelog` antes do `mkdocs build`), então ela sempre reflete o branch
+padrão — a CI nunca faz commit do `CHANGELOG.md` de volta no repositório. Você nunca a edita à mão.
+Regenere ou pré-visualize localmente a qualquer momento com `make changelog` (ou
+`bash tasks.sh changelog`).
 
 ---
 

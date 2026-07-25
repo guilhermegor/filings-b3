@@ -13,40 +13,40 @@
 ![Open Issues](https://img.shields.io/github/issues/guilhermegor/filings-b3)
 ![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-darkgreen.svg)
 
-Simple and efficient Python library to interact with B3 (Brazil's exchange) public datasets.
-Each reader turns one trading session into a typed, contract-validated `pandas.DataFrame`
-carrying provenance — money as exact `Decimal`, never a lossy `float`.
+Biblioteca Python simples e eficiente para acessar os conjuntos de dados públicos da B3 (a bolsa
+brasileira). Cada _reader_ transforma um pregão em um `pandas.DataFrame` tipado, validado por
+contrato e com proveniência — valores monetários como `Decimal` exato, nunca um `float` com perda.
 
-## ✨ Key Features
+## ✨ Principais recursos
 
-### 📊 Daily Bulletin (BDI) readers
-- [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — the per-session cash-equities summary (`DailyAverageStocks`).
-- [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — the securities-lending (BTB) open-position snapshot (`BTBLendingOpenPosition`).
+### 📊 Readers do Boletim Diário (BDI)
+- [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
+- [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
 
-### 🔒 Fidelity by construction
-- **Explicit typing** — every column typed on load, never pandas' inference.
-- **Exact decimals** — money and any value whose fractional part matters is `decimal.Decimal`, never a binary `float`.
-- **Contracts** — a source that drops a required column fails loudly with `ContractError`, verified against B3's own published layouts.
+### 🔒 Fidelidade por construção
+- **Tipagem explícita** — toda coluna tipada na carga, nunca a inferência do pandas.
+- **Decimais exatos** — dinheiro e qualquer valor cuja parte fracionária importa é `decimal.Decimal`, nunca um `float` binário.
+- **Contratos** — uma fonte que remove uma coluna obrigatória falha de forma barulhenta com `ContractError`, verificado contra os layouts publicados pela própria B3.
 
-### 🧾 Provenance & bronze layer
-- Six provenance columns on every frame (`url`, `updated_at`, `source_key`, `package_version`, `ingestion_run_id`, `content_hash`).
-- Pass `path_raw=` to retain each untouched source page for a datalake's bronze layer.
+### 🧾 Proveniência & camada bronze
+- Seis colunas de proveniência em todo _frame_ (`url`, `updated_at`, `source_key`, `package_version`, `ingestion_run_id`, `content_hash`).
+- Passe `path_raw=` para reter cada página bruta da fonte para a camada bronze de um _datalake_.
 
-## 🚀 Getting Started
+## 🚀 Primeiros passos
 
-### Prerequisites
+### Pré-requisitos
 - Python 3.10+
-- Poetry (recommended)
-- Optional: Makefile
+- Poetry (recomendado)
+- Opcional: Makefile
 
-### Installation
+### Instalação
 
-**Option 1: Pip (recommended)**
+**Opção 1: Pip (recomendado)**
 ```bash
 pip install filings-b3
 ```
 
-**Option 2: Build from source**
+**Opção 2: Build a partir do código-fonte**
 ```bash
 git clone https://github.com/guilhermegor/filings-b3.git
 cd filings-b3
@@ -56,7 +56,7 @@ poetry install --no-root
 poetry shell
 ```
 
-### Basic usage
+### Uso básico
 ```python
 from datetime import date
 from filings_b3 import BdiBtbLendingOpenPositionsReader
@@ -65,17 +65,17 @@ df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
 ```
 
-`date_ref` is **required** — the BDI endpoint is date-addressed, so there is no "latest"
-default. See the [documentation](https://guilhermegor.github.io/filings-b3/) for every reader
-and more recipes.
+`date_ref` é **obrigatório** — o endpoint do BDI é endereçado por data, então não existe um padrão
+"mais recente". Veja a [documentação](https://guilhermegor.github.io/filings-b3/) para cada _reader_
+e mais receitas.
 
-### Running Tests
+### Rodando os testes
 ```bash
 poetry run pytest tests/unit/ -v
 poetry run pytest tests/integration/ -v
 ```
 
-## 📂 Project Structure
+## 📂 Estrutura do projeto
 ```
 filings-b3/
 ├── .github/
@@ -87,9 +87,9 @@ filings-b3/
 ├── bin/
 ├── docs/
 ├── src/filings_b3/
-│   ├── daily_bulletin/          # Boletim Diário do Pregão (BDI) readers
-│   ├── search_trading_session/  # Pesquisa por Pregão readers
-│   └── _internal/               # private: contracts, utils, ports
+│   ├── daily_bulletin/          # readers do Boletim Diário do Pregão (BDI)
+│   ├── search_trading_session/  # readers da Pesquisa por Pregão
+│   └── _internal/               # privado: contracts, utils, ports
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -102,13 +102,13 @@ filings-b3/
 └── requirements.txt
 ```
 
-## 👨‍💻 Authors
+## 👨‍💻 Autores
 - guilhermegor — [GitHub](https://github.com/guilhermegor) | [LinkedIn](https://www.linkedin.com/in/guilhermegor)
 
-## 📜 License
-This project is licensed under the MIT License — see [LICENSE](LICENSE).
+## 📜 Licença
+Este projeto é licenciado sob a Licença MIT — veja [LICENSE](LICENSE).
 
-## 🔗 Useful Links
-- [Documentation](https://guilhermegor.github.io/filings-b3/)
-- [GitHub Repository](https://github.com/guilhermegor/filings-b3)
-- [Issue Tracker](https://github.com/guilhermegor/filings-b3/issues)
+## 🔗 Links úteis
+- [Documentação](https://guilhermegor.github.io/filings-b3/)
+- [Repositório no GitHub](https://github.com/guilhermegor/filings-b3)
+- [Rastreador de issues](https://github.com/guilhermegor/filings-b3/issues)

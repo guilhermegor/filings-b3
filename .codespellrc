@@ -22,4 +22,4 @@ quiet-level = 3
 # discovering them one failed-commit-at-a-time wastes a full pre-commit run each
 # time. EXTEND this list with your locale's vocabulary; never `skip` a whole file
 # (that hides real typos in the code identifiers there).
-ignore-words-list = nd,fpr,strat,enty,filetest,nome,ZAR,fro,hsi,HSI,WEGE,zar,SMLL,Classe,classe,erro,serie,emiss,TERMO,termo,INDX,atual,nomes,datas,data,caracteres,caractere,momento,repete,essencial,construtor,comando,comandos,sequencia,referencia,valores,coluna,colunas,linha,linhas,arquivo,arquivos,cabecalho,conteudo,tamanho,saida,entrada,obrigatorio,opcional,usuario,parametro,parametros,retorno,entao,acao,nao,erros
+ignore-words-list = nd,fpr,strat,enty,filetest,nome,ZAR,fro,hsi,HSI,WEGE,zar,SMLL,Classe,classe,erro,serie,emiss,TERMO,termo,INDX,atual,nomes,datas,data,caracteres,caractere,momento,repete,essencial,construtor,comando,comandos,sequencia,referencia,valores,coluna,colunas,linha,linhas,arquivo,arquivos,cabecalho,conteudo,tamanho,saida,entrada,obrigatorio,opcional,usuario,parametro,parametros,retorno,entao,acao,nao,erros,ser,eles,oficial,seletor,registre,copie,vai,autor

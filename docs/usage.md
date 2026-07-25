@@ -1,18 +1,19 @@
-# **Usage**
+# **Uso**
 
-Installing and using `filings-b3` — typed access to B3 (Brazil's exchange) public datasets.
+Instalando e usando o `filings-b3` — acesso tipado aos conjuntos de dados públicos da B3 (a bolsa
+brasileira).
 
-> **See also:** [API Reference](api/index.md) · [Examples](examples.md)
+> **Veja também:** [Referência da API](api/index.md) · [Exemplos](examples.md)
 
 ---
 
-## Installation
+## Instalação
 
 ```bash
 pip install filings-b3
 ```
 
-Or with Poetry:
+Ou com Poetry:
 
 ```bash
 poetry add filings-b3
@@ -20,10 +21,10 @@ poetry add filings-b3
 
 ---
 
-## Basic usage
+## Uso básico
 
-Every reader takes the trading session to read and returns a typed
-`pandas.DataFrame` carrying provenance columns:
+Cada _reader_ recebe o pregão a ser lido e retorna um `pandas.DataFrame` tipado, com colunas de
+proveniência:
 
 ```python
 from datetime import date
@@ -33,13 +34,13 @@ df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
 ```
 
-`date_ref` is **required** — the BDI endpoint is date-addressed, so there is no
-"latest" default. Want the previous business day? Compute it and pass it.
+`date_ref` é **obrigatório** — o endpoint do BDI é endereçado por data, então não existe um padrão
+"mais recente". Precisa do dia útil anterior? Calcule-o e passe explicitamente.
 
-## Keeping the raw artifact (bronze layer)
+## Mantendo o artefato bruto (camada bronze)
 
-Pass `path_raw` to retain each untouched source page for a datalake's bronze
-layer — a contract break is then replayable against the exact bytes:
+Passe `path_raw` para reter cada página bruta da fonte para a camada bronze de um _datalake_ — uma
+quebra de contrato fica, assim, reproduzível contra os bytes exatos:
 
 ```python
 from pathlib import Path
@@ -49,32 +50,32 @@ df = BdiBtbLendingOpenPositionsReader(
 ).read()
 ```
 
-## What every reader guarantees
+## O que todo _reader_ garante
 
-- Columns are the source's own, upper-snake-cased and **explicitly typed** — never pandas'
-  inference.
-- Money columns (`BALANCE`, `AVG_PRIC`, `VLM_TRADED_DAY`, …) are exact `decimal.Decimal`, never
-  binary `float`.
-- Six provenance columns on every frame: `url`, `updated_at`, `source_key`, `package_version`,
-  `ingestion_run_id`, `content_hash`.
-- A source that violates its declared contract raises `ContractError` — a missing required
-  column fails loudly rather than silently.
+- As colunas são as da própria fonte, em _UPPER_SNAKE_CASE_ e **tipadas explicitamente** — nunca a
+  inferência do pandas.
+- Colunas monetárias (`BALANCE`, `AVG_PRIC`, `VLM_TRADED_DAY`, …) são `decimal.Decimal` exato,
+  nunca `float` binário.
+- Seis colunas de proveniência em todo _frame_: `url`, `updated_at`, `source_key`,
+  `package_version`, `ingestion_run_id`, `content_hash`.
+- Uma fonte que viola o contrato declarado levanta `ContractError` — uma coluna obrigatória
+  ausente falha de forma barulhenta, em vez de silenciosa.
 
-See the [API Reference](api/reference.md) for the full reader list.
+Veja a [Referência da API](api/reference.md) para a lista completa de _readers_.
 
 ---
 
-## Running tests
+## Executando os testes
 
 ```bash
-make unit_tests         # unit tests only
-make integration_tests  # integration tests only
-make test_cov           # unit tests + coverage report + badge
+make unit_tests         # apenas testes unitários
+make integration_tests  # apenas testes de integração
+make test_cov           # testes unitários + relatório de cobertura + badge
 ```
 
 ---
 
-## Linting and formatting
+## Lint e formatação
 
 ```bash
 make lint          # ruff check + ruff format + codespell + pydocstyle
@@ -82,13 +83,13 @@ make lint          # ruff check + ruff format + codespell + pydocstyle
 
 ---
 
-## Publishing to PyPI
+## Publicando no PyPI
 
-Two GitHub Actions workflows handle releases:
+Dois workflows do GitHub Actions cuidam dos releases:
 
-- **`release-test-pypi.yaml`** — publish to [Test PyPI](https://test.pypi.org) first.
-- **`release-pypi.yaml`** — publish to [PyPI](https://pypi.org) and cut a GitHub release.
+- **`release-test-pypi.yaml`** — publica primeiro no [Test PyPI](https://test.pypi.org).
+- **`release-pypi.yaml`** — publica no [PyPI](https://pypi.org) e cria um release no GitHub.
 
-Trigger either from the **Actions** tab (`workflow_dispatch`) with the version to release.
-Both gate on the new version being greater than the latest already published, build with
-Poetry, and fall back to `twine` if `poetry publish` is unavailable.
+Dispare qualquer um pela aba **Actions** (`workflow_dispatch`) com a versão a publicar. Ambos
+exigem que a nova versão seja maior que a última já publicada, constroem com o Poetry e recorrem ao
+`twine` caso o `poetry publish` não esteja disponível.

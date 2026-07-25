@@ -1,17 +1,17 @@
-# **Examples**
+# **Exemplos**
 
-Task-oriented, self-contained snippets. Each recipe stands alone — copy it and adjust the
-session date.
+Trechos autossuficientes, orientados a tarefas. Cada receita é independente — copie e ajuste a data
+do pregão.
 
-> **See also:** [Usage](usage.md) for the basics · [API Reference](api/index.md) for every public
-> symbol.
+> **Veja também:** [Uso](usage.md) para o básico · [Referência da API](api/index.md) para cada
+> símbolo público.
 
 ---
 
-## Recipe: read a session's securities-lending open positions
+## Receita: ler as posições em aberto de empréstimo de ativos de um pregão
 
-Pull the end-of-session BTB open-position snapshot for one trading day and inspect the largest
-positions by financial balance.
+Obtenha o retrato de fim de pregão das posições em aberto de BTB para um dia e inspecione as
+maiores posições por saldo financeiro.
 
 ```python
 from datetime import date
@@ -19,12 +19,12 @@ from filings_b3 import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 
-# BALANCE is an exact Decimal (BRL) — safe to sort and sum without float drift.
+# BALANCE é um Decimal exato (em BRL) — seguro para ordenar e somar sem perda de float.
 top = df.sort_values("BALANCE", ascending=False).head(10)
 print(top[["TCKR_SYMB", "ISIN", "STOCK_BALANCE", "BALANCE"]])
 ```
 
-## Recipe: read the daily cash-equities summary
+## Receita: ler o resumo diário do mercado à vista de ações
 
 ```python
 from datetime import date
@@ -34,11 +34,11 @@ df = BdiStocksSummaryReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "NMBR_TRADES_DAY", "VLM_TRADED_DAY"]].head())
 ```
 
-## Recipe: keep the raw source for a datalake's bronze layer
+## Receita: manter a fonte bruta para a camada bronze de um _datalake_
 
-Pass `path_raw` to retain each untouched JSON page. Combined with the provenance columns on every
-frame (`content_hash`, `url`, `updated_at`), a stored row stays fully attributable and a contract
-break is replayable against the exact bytes that caused it.
+Passe `path_raw` para reter cada página JSON intocada. Combinado com as colunas de proveniência de
+todo _frame_ (`content_hash`, `url`, `updated_at`), uma linha armazenada permanece totalmente
+rastreável e uma quebra de contrato fica reproduzível contra os bytes exatos que a causaram.
 
 ```python
 from datetime import date
@@ -49,14 +49,14 @@ df = BdiBtbLendingOpenPositionsReader(
     date(2025, 1, 2), path_raw=Path("/data/bronze/b3")
 ).read()
 
-# Provenance travels with the data — no separate metadata store needed.
+# A proveniência viaja junto com os dados — nenhum repositório de metadados separado é necessário.
 print(df[["source_key", "content_hash", "updated_at"]].iloc[0])
 ```
 
-## Recipe: compute money totals without float drift
+## Receita: calcular totais monetários sem perda de float
 
-Every monetary column is a `decimal.Decimal`, so aggregations reconcile against B3's own
-published totals exactly.
+Toda coluna monetária é um `decimal.Decimal`, então as agregações reconciliam exatamente com os
+totais publicados pela própria B3.
 
 ```python
 from datetime import date
@@ -66,6 +66,6 @@ from filings_b3 import BdiBtbLendingOpenPositionsReader
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 
 total = sum(df["BALANCE"])
-assert isinstance(total, Decimal)  # never a lossy float64
-print(f"Total open-position balance: R$ {total}")
+assert isinstance(total, Decimal)  # nunca um float64 com perda
+print(f"Saldo total das posições em aberto: R$ {total}")
 ```
