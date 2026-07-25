@@ -1,5 +1,5 @@
-/* Placeholder brand styles — shipped by the scaffold so a fresh site looks intentional.
-   Swap docs/assets/logo.png for your own brand asset, then tune size/placement here. */
+/* Brand styles for the landing hero. The logo asset lives at
+   docs/assets/b3-brasil-bolsa-balcao.png; tune size/placement here. */
 
 .hero-logo {
     display: block;

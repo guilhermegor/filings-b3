@@ -16,9 +16,9 @@ extra_css:
 
 theme:
   name: material
-  # Placeholder brand icon — swap docs/assets/logo.png for your own (favicon is separate).
-  logo: assets/logo.png
-  favicon: assets/logo.png
+  # Brand mark served from docs/assets/ (MkDocs only serves files under docs/).
+  logo: assets/b3-brasil-bolsa-balcao.png
+  favicon: assets/b3-brasil-bolsa-balcao.png
   palette:
     - scheme: default
       primary: indigo
