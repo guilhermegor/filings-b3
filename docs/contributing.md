@@ -132,12 +132,12 @@ against dependency confusion (`poetry`'s `priority = "explicit"`; `pip --index-u
 
 ## Branding the docs site
 
-The scaffold ships a **placeholder** brand image at `docs/assets/logo.png`, wired as the header
+The brand image lives at `docs/assets/b3-brasil-bolsa-balcao.png`, wired as the header
 logo/favicon (`theme.logo` / `theme.favicon` in `mkdocs.yml`) and as the landing hero on
-`docs/index.md`. To brand your site:
+`docs/index.md`. To change it:
 
-1. Replace `docs/assets/logo.png` with your own asset (keep the filename, or update the two
-   `mkdocs.yml` paths and the `<img>` in `docs/index.md`).
+1. Replace `docs/assets/b3-brasil-bolsa-balcao.png` with your own asset (keep the filename, or
+   update the two `mkdocs.yml` paths and the `<img>` in `docs/index.md`).
 2. Tune size and placement in `docs/stylesheets/extra.css` — the `.hero-logo` rule: `max-width`
    scales it, and the side margins (`margin: … auto` centers; `float` aligns left/right).
 

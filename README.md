@@ -1,43 +1,41 @@
-# Filings B3 <img src="assets/logo_lorem_ipsum.png" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
+# Filings B3 <img src="assets/b3-brasil-bolsa-balcao.png" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
 
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-![Python Version](https://img.shields.io/badge/python-${PYTHON_VERSIONS}-blue.svg)
-![PyPI Version](https://img.shields.io/pypi/v/${PYPI_NAME})
-[![Snyk Vulnerabilities](https://snyk.io/test/github/${GITHUB_USERNAME}/${PROJECT_SLUG}/badge.svg)](https://snyk.io/test/github/${GITHUB_USERNAME}/${PROJECT_SLUG})
-[![Snyk License](https://snyk.io/advisor/python/${PYPI_NAME}/badge.svg)](https://snyk.io/advisor/python/${PYPI_NAME})
-![PyPI Downloads](https://static.pepy.tech/badge/${PYPI_NAME})
-[![Linting](https://img.shields.io/badge/linting-ruff_|_codespell-blue)](https://github.com/astral-sh/ruff+https://github.com/codespell-project/codespell)
+![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)
+![PyPI Version](https://img.shields.io/pypi/v/filings-b3)
+[![Snyk Vulnerabilities](https://snyk.io/test/github/guilhermegor/filings-b3/badge.svg)](https://snyk.io/test/github/guilhermegor/filings-b3)
+[![Snyk License](https://snyk.io/advisor/python/filings-b3/badge.svg)](https://snyk.io/advisor/python/filings-b3)
+![PyPI Downloads](https://static.pepy.tech/badge/filings-b3)
+[![Linting](https://img.shields.io/badge/linting-ruff_|_codespell-blue)](https://github.com/astral-sh/ruff)
 ![Formatting: isort](https://img.shields.io/badge/formatting-isort-%231674b1)
 ![Test Coverage](./coverage.svg)
-![License](https://img.shields.io/badge/license-${PROJECT_LICENSE}-green.svg)
-![Open Issues](https://img.shields.io/github/issues/${GITHUB_USERNAME}/${PROJECT_SLUG})
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Open Issues](https://img.shields.io/github/issues/guilhermegor/filings-b3)
 ![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-darkgreen.svg)
 
-${PROJECT_DESCRIPTION}
+Simple and efficient Python library to interact with B3 (Brazil's exchange) public datasets.
+Each reader turns one trading session into a typed, contract-validated `pandas.DataFrame`
+carrying provenance — money as exact `Decimal`, never a lossy `float`.
 
 ## ✨ Key Features
 
-> Replace these placeholder groups with your project's actual capabilities.
-> Group features by domain or capability — one `###` heading per area.
+### 📊 Daily Bulletin (BDI) readers
+- [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — the per-session cash-equities summary (`DailyAverageStocks`).
+- [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — the securities-lending (BTB) open-position snapshot (`BTBLendingOpenPosition`).
 
-### 🧩 Capability Group 1
-- [Feature placeholder 1](${LINK_PLACEHOLDER})
-- [Feature placeholder 2](${LINK_PLACEHOLDER})
-- [Feature placeholder 3](${LINK_PLACEHOLDER})
+### 🔒 Fidelity by construction
+- **Explicit typing** — every column typed on load, never pandas' inference.
+- **Exact decimals** — money and any value whose fractional part matters is `decimal.Decimal`, never a binary `float`.
+- **Contracts** — a source that drops a required column fails loudly with `ContractError`, verified against B3's own published layouts.
 
-### 🧩 Capability Group 2
-- [Feature placeholder 4](${LINK_PLACEHOLDER})
-- [Feature placeholder 5](${LINK_PLACEHOLDER})
-- [Feature placeholder 6](${LINK_PLACEHOLDER})
-
-### ⚙️ Utilities
-- [Utility placeholder 1](${LINK_PLACEHOLDER})
-- [Utility placeholder 2](${LINK_PLACEHOLDER})
+### 🧾 Provenance & bronze layer
+- Six provenance columns on every frame (`url`, `updated_at`, `source_key`, `package_version`, `ingestion_run_id`, `content_hash`).
+- Pass `path_raw=` to retain each untouched source page for a datalake's bronze layer.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python ${PYTHON_VERSIONS}
+- Python 3.10+
 - Poetry (recommended)
 - Optional: Makefile
 
@@ -45,23 +43,31 @@ ${PROJECT_DESCRIPTION}
 
 **Option 1: Pip (recommended)**
 ```bash
-pip install ${PYPI_NAME}
+pip install filings-b3
 ```
 
 **Option 2: Build from source**
 ```bash
-git clone https://github.com/${GITHUB_USERNAME}/${PROJECT_SLUG}.git
-cd ${PROJECT_SLUG}
-pyenv install ${PYTHON_VERSION_PIN}
-pyenv local ${PYTHON_VERSION_PIN}
+git clone https://github.com/guilhermegor/filings-b3.git
+cd filings-b3
+pyenv install 3.12.2
+pyenv local 3.12.2
 poetry install --no-root
 poetry shell
 ```
 
-**Make (optional automation)**
-- Windows: install via MinGW or Chocolatey
-- macOS: Xcode CLI tools or Homebrew
-- Linux: sudo apt-get install build-essential
+### Basic usage
+```python
+from datetime import date
+from filings_b3 import BdiBtbLendingOpenPositionsReader
+
+df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
+print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
+```
+
+`date_ref` is **required** — the BDI endpoint is date-addressed, so there is no "latest"
+default. See the [documentation](https://guilhermegor.github.io/filings-b3/) for every reader
+and more recipes.
 
 ### Running Tests
 ```bash
@@ -69,52 +75,40 @@ poetry run pytest tests/unit/ -v
 poetry run pytest tests/integration/ -v
 ```
 
-## 📂 Project Structure (template)
+## 📂 Project Structure
 ```
-${PROJECT_SLUG}/
+filings-b3/
 ├── .github/
 │   ├── workflows/
 │   ├── CODEOWNERS
 │   └── PULL_REQUEST_TEMPLATE.md
-├── .vscode/
-├── bin/
-│   ├── check_unix_filenames.sh
-│   ├── fix_playwright.sh
-│   ├── start.sh
-│   └── test_urls_docstrings.sh
-├── data/
-├── docs/
-├── examples/
-├── img/
 ├── assets/
-│   └── logo.png
-├── src/${PACKAGE_IMPORT_PATH}/
+│   └── b3-brasil-bolsa-balcao.png
+├── bin/
+├── docs/
+├── src/filings_b3/
+│   ├── daily_bulletin/          # Boletim Diário do Pregão (BDI) readers
+│   ├── search_trading_session/  # Pesquisa por Pregão readers
+│   └── _internal/               # private: contracts, utils, ports
 ├── tests/
 │   ├── unit/
 │   ├── integration/
 │   └── performance/
-├── .gitignore
-├── .pre-commit-config.yaml
-├── .python-version
 ├── LICENSE
 ├── Makefile
 ├── poetry.lock
 ├── pyproject.toml
 ├── README.md
-├── requirements.txt
-└── requirements-prd.txt
+└── requirements.txt
 ```
 
 ## 👨‍💻 Authors
-- ${AUTHOR_NAME} — [GitHub](https://github.com/${GITHUB_USERNAME}) | [LinkedIn](${LINKEDIN_URL})
+- guilhermegor — [GitHub](https://github.com/guilhermegor)
 
 ## 📜 License
-This project is licensed under ${PROJECT_LICENSE}. Update this section if you use a different license.
-
-## 🙌 Acknowledgments
-- Inspired by relevant open-source work.
-- Thank contributors and the community.
+This project is licensed under the MIT License — see [LICENSE](LICENSE).
 
 ## 🔗 Useful Links
-- [GitHub Repository](https://github.com/${GITHUB_USERNAME}/${PROJECT_SLUG})
-- [Issue Tracker](https://github.com/${GITHUB_USERNAME}/${PROJECT_SLUG}/issues)
+- [Documentation](https://guilhermegor.github.io/filings-b3/)
+- [GitHub Repository](https://github.com/guilhermegor/filings-b3)
+- [Issue Tracker](https://github.com/guilhermegor/filings-b3/issues)
