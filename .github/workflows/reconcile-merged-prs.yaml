@@ -35,6 +35,12 @@ permissions:
   issues: write # close the linked issues
   pull-requests: read
 
+# One reconcile at a time — a schedule tick and a merge event must not race on the same
+# branch/issue (e.g. both trying to delete the head ref). Do not cancel an in-flight sweep.
+concurrency:
+  group: reconcile-merged-prs
+  cancel-in-progress: false
+
 jobs:
   reconcile:
     name: Close linked issues of merged PRs
