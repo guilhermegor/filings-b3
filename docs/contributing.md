@@ -1,254 +1,262 @@
-# **Contributing**
+# **Contribuindo**
 
-Everything you need to develop, test, and release this library.
+Tudo o que você precisa para desenvolver, testar e publicar esta biblioteca.
 
-> **See also:** [Usage](usage.md) · [API Reference](api/index.md) · the repository's root
-> `CONTRIBUTING.md` holds the authoritative branch/PR and commit-message policy.
+> **Veja também:** [Uso](usage.md) · [Referência da API](api/index.md) · o `CONTRIBUTING.md` na
+> raiz do repositório contém a política oficial de branch/PR e de mensagens de commit.
 
 ---
 
-## Setting up for development
+## Preparando o ambiente de desenvolvimento
 
-The project ships both a `Makefile` and a parallel `tasks.sh`, so use whichever suits your
-machine — **`make init`**, or **`bash tasks.sh init`** when `make` is unavailable (e.g. a stock
-Windows shell).
+O projeto traz tanto um `Makefile` quanto um `tasks.sh` paralelo, então use o que servir para a sua
+máquina — **`make init`**, ou **`bash tasks.sh init`** quando o `make` não estiver disponível (por
+exemplo, um shell padrão do Windows).
 
 ```bash
-make init        # seed .env, create the Poetry venv + install deps, install pre-commit hooks
-# or, without make:
+make init        # semeia o .env, cria o venv do Poetry + instala deps, instala os hooks do pre-commit
+# ou, sem make:
 bash tasks.sh init
 ```
 
-`init` composes `ensure_env` (seed `.env`), `venv` (create the Poetry virtualenv, install **all**
-dependencies including dev + docs), and `precommit` (install the git hooks). Poetry is
-auto-installed if missing.
+O `init` compõe `ensure_env` (semear `.env`), `venv` (criar o virtualenv do Poetry, instalar
+**todas** as dependências, incluindo dev + docs) e `precommit` (instalar os hooks do git). O Poetry
+é instalado automaticamente se estiver ausente.
 
-## Tests and linting
+## Testes e lint
 
 ```bash
 make unit_tests          # poetry run pytest tests/unit/
 make integration_tests   # poetry run pytest tests/integration/
-make lint                # ruff + mypy + codespell + pydocstyle + shell/sql/yaml gates
+make lint                # ruff + mypy + codespell + pydocstyle + gates de shell/sql/yaml
 ```
 
-CI runs the same gates on every pull request; keep them green locally before pushing.
+A CI roda os mesmos gates em cada pull request; mantenha-os verdes localmente antes de dar push.
 
-## Verifying the built package
+## Verificando o pacote construído
 
-Before opening a release PR, confirm the wheel actually builds and imports — this catches
-packaging mistakes (a missing `__init__`, an unshipped `_internal/` subpackage) that source-tree
-tests never surface:
+Antes de abrir um PR de release, confirme que o _wheel_ realmente constrói e importa — isto pega
+erros de empacotamento (um `__init__` faltando, um subpacote `_internal/` não enviado) que os
+testes na árvore de código nunca revelam:
 
 ```bash
-make install_dist_locally    # python -m build → install → smoke-import → report the built wheel
+make install_dist_locally    # python -m build → instala → smoke-import → reporta o wheel construído
 ```
 
-## Publishing the documentation (versioned, via mike)
+## Publicando a documentação (versionada, via mike)
 
-The published site is **versioned**: a consumer pinned to an older release reads *that
-release's* docs, not HEAD. [mike](https://github.com/jimporter/mike) maintains the version tree
-on the `gh-pages` branch and MkDocs-Material renders the version dropdown.
+O site publicado é **versionado**: um consumidor fixado em um release mais antigo lê a documentação
+*daquele release*, não a do HEAD. O [mike](https://github.com/jimporter/mike) mantém a árvore de
+versões no branch `gh-pages` e o MkDocs-Material renderiza o seletor de versões.
 
-Two workflows split the work:
+Dois workflows dividem o trabalho:
 
-| Workflow | Trigger | What it does |
+| Workflow | Gatilho | O que faz |
 |---|---|---|
-| `Docs - Strict Build Check` (`docs.yaml`) | every push + PR | `mkdocs build --strict` only — catches broken links/nav before a release. **Never deploys.** |
-| `Release to PyPI` (`release-pypi.yaml`) | manual release | after the PyPI publish succeeds, deploys the released version with `mike deploy --update-aliases <X.Y> latest` |
+| `Docs - Strict Build Check` (`docs.yaml`) | todo push + PR | apenas `mkdocs build --strict` — pega links/nav quebrados antes de um release. **Nunca faz deploy.** |
+| `Release to PyPI` (`release-pypi.yaml`) | release manual | após a publicação no PyPI ter sucesso, faz o deploy da versão publicada com `mike deploy --update-aliases <X.Y> latest` |
 
-Because the deploy runs **after** publishing, the site only ever advertises versions that
-actually shipped. Notes:
+Como o deploy roda **depois** da publicação, o site só anuncia versões que de fato foram
+publicadas. Observações:
 
-- **Granularity is `X.Y`** — `1.4.2` and `1.4.7` share the `1.4` entry; the `latest` alias
-  always tracks the newest release and is the default landing version.
-- **Prereleases never move `latest`** — a version with a suffix (`1.2.3rc1`) builds and
-  publishes, but the docs deploy job is skipped.
+- **A granularidade é `X.Y`** — `1.4.2` e `1.4.7` compartilham a entrada `1.4`; o alias `latest`
+  sempre segue o release mais recente e é a versão padrão de aterrissagem.
+- **Prereleases nunca movem o `latest`** — uma versão com sufixo (`1.2.3rc1`) constrói e publica,
+  mas o job de deploy da documentação é pulado.
 
-### One-time Pages setup
+### Configuração única do Pages
 
-mike serves from the **`gh-pages` branch**, so Pages must be set to *Deploy from a branch →
-gh-pages*. The workflow's `GITHUB_TOKEN` cannot change that (it is a GitHub App token without
-repo-admin rights), so do it with your own `gh` auth:
+O mike serve a partir do **branch `gh-pages`**, então o Pages precisa estar configurado como
+*Deploy from a branch → gh-pages*. O `GITHUB_TOKEN` do workflow não pode mudar isso (é um token de
+GitHub App sem direitos de admin do repositório), então faça-o com a sua própria autenticação do
+`gh`:
 
 ```bash
-make enable_pages          # or: bash tasks.sh enable_pages
+make enable_pages          # ou: bash tasks.sh enable_pages
 ```
 
-This already runs inside `make init` / `bash tasks.sh init`, and is **idempotent and
-non-blocking** — it warns and continues if `gh` is absent/unauthenticated, no remote resolves,
-or you are not a repo admin (a fork), so it never breaks `init`.
+Isto já roda dentro de `make init` / `bash tasks.sh init`, e é **idempotente e não bloqueante** —
+avisa e continua se o `gh` estiver ausente/não autenticado, se nenhum remote resolver, ou se você
+não for admin do repositório (um fork), então nunca quebra o `init`.
 
-**Ordering matters:** the `gh-pages` branch does not exist until the first release deploy
-creates it. Until then `enable_pages` deliberately leaves Pages untouched (so the site is never
-pointed at an empty branch) and tells you to re-run it. So: cut the first release, then run
-`make enable_pages` once. Manual alternative: *Settings → Pages → Build and deployment →
+**A ordem importa:** o branch `gh-pages` não existe até o primeiro deploy de release criá-lo. Até
+lá, o `enable_pages` deliberadamente deixa o Pages intocado (para que o site nunca aponte para um
+branch vazio) e pede que você rode de novo. Então: faça o primeiro release, depois rode
+`make enable_pages` uma vez. Alternativa manual: *Settings → Pages → Build and deployment →
 Source: Deploy from a branch → `gh-pages` / `/`*.
 
 ## Pull requests
 
-1. Branch off the default branch following the prefix policy (`feat/…`, `fix/…`, …).
-2. Fill out the PR template completely.
-3. Ensure the CI checks (tests, lint, docs build) pass — they are the merge gate.
+1. Crie o branch a partir do branch padrão seguindo a política de prefixos (`feat/…`, `fix/…`, …).
+2. Preencha o template de PR por completo.
+3. Garanta que os checks da CI (testes, lint, build da documentação) passem — eles são o gate de
+   merge.
 
-## Releasing
+## Fazendo releases
 
-Releases are **tag-driven and secret-free** when the project is connected to a GitHub remote:
+Os releases são **guiados por tag e sem segredos** quando o projeto está conectado a um remote do
+GitHub:
 
-- The version is the **git tag** (via `poetry-dynamic-versioning`); `pyproject.toml` holds a
-  `0.0.0` placeholder. Do not hand-edit it. Trigger a release from the Actions tab
-  (`Release to PyPI` / `Release to Test PyPI`, `workflow_dispatch` with the version), or by pushing
-  a `vX.Y.Z` tag.
-- The release workflow runs the **full test suite** as a hard gate, builds with `python -m build`,
-  and publishes via **OIDC trusted publishing** (`pypa/gh-action-pypi-publish`) — no stored
-  `PYPI_TOKEN`.
-- The changelog is regenerated from tags at release/build time (`make changelog` locally); CI never
-  commits `CHANGELOG.md` back to the protected default branch.
+- A versão é a **tag do git** (via `poetry-dynamic-versioning`); o `pyproject.toml` guarda um
+  _placeholder_ `0.0.0`. Não edite à mão. Dispare um release pela aba Actions
+  (`Release to PyPI` / `Release to Test PyPI`, `workflow_dispatch` com a versão), ou dando push em
+  uma tag `vX.Y.Z`.
+- O workflow de release roda a **suíte completa de testes** como gate rígido, constrói com
+  `python -m build` e publica via **OIDC trusted publishing** (`pypa/gh-action-pypi-publish`) — sem
+  `PYPI_TOKEN` armazenado.
+- O changelog é regenerado a partir das tags no momento do release/build (`make changelog`
+  localmente); a CI nunca faz commit do `CHANGELOG.md` de volta no branch padrão protegido.
 
-### Maintainer setup — trusted publisher (one time, before the first release)
+### Configuração do mantenedor — trusted publisher (uma vez, antes do primeiro release)
 
-Register a **trusted publisher** on **both** [pypi.org](https://pypi.org) and
-[test.pypi.org](https://test.pypi.org). Every claim must match the workflow exactly or the upload
-fails with an opaque `invalid-publisher`:
+Registre um **trusted publisher** em **ambos** [pypi.org](https://pypi.org) e
+[test.pypi.org](https://test.pypi.org). Cada claim precisa bater exatamente com o workflow, senão o
+upload falha com um `invalid-publisher` opaco:
 
-| Claim | Value |
+| Claim | Valor |
 |-------|-------|
-| Owner / repository | your GitHub `<owner>` / `<repo>` |
+| Owner / repository | seu `<owner>` / `<repo>` do GitHub |
 | Workflow filename | `release-pypi.yaml` (PyPI) / `release-test-pypi.yaml` (Test PyPI) |
 | Environment | `release-pypi` / `release-test-pypi` |
-| PyPI **Project Name** | must equal the distribution name (`name` in `pyproject.toml`) |
+| PyPI **Project Name** | precisa ser igual ao nome da distribuição (`name` no `pyproject.toml`) |
 
-For the very first upload the project does not exist yet — register a **pending publisher** at the
-account level (not under an existing project's settings). Publishing from a laptop instead of CI is
-the one case that still needs an API token; OIDC works only from GitHub Actions.
+Para o primeiríssimo upload o projeto ainda não existe — registre um **pending publisher** no nível
+da conta (não nas configurações de um projeto existente). Publicar de um laptop em vez da CI é o
+único caso que ainda precisa de um API token; o OIDC só funciona a partir do GitHub Actions.
 
-### Choosing publish targets
+### Escolhendo os alvos de publicação
 
-The scaffold wires the release workflows for the official public registry (PyPI) and a staging
-registry (Test PyPI). To publish to a **private / non-official** source instead — a git source
-(`pip install git+https://…`), a private PEP 503 index, or (for ecosystems that support it) GitHub
-Packages — wire the consumer-side source in `pyproject.toml` with an explicit-priority guard
-against dependency confusion (`poetry`'s `priority = "explicit"`; `pip --index-url`, never
-`--extra-index-url`).
+O scaffold conecta os workflows de release para o registro público oficial (PyPI) e um registro de
+staging (Test PyPI). Para publicar em uma fonte **privada / não oficial** — uma fonte git
+(`pip install git+https://…`), um índice PEP 503 privado, ou (para ecossistemas que suportam)
+GitHub Packages — configure a fonte do lado do consumidor no `pyproject.toml` com uma guarda de
+prioridade explícita contra confusão de dependências (`priority = "explicit"` do `poetry`;
+`pip --index-url`, nunca `--extra-index-url`).
 
-## Branding the docs site
+## Marca do site de documentação
 
-The brand image lives at `docs/assets/b3-logo.jpg`, wired as the header
-logo/favicon (`theme.logo` / `theme.favicon` in `mkdocs.yml`) and as the landing hero on
-`docs/index.md`. To change it:
+A imagem de marca fica em `docs/assets/b3-logo.jpg`, conectada como logo/favicon do cabeçalho
+(`theme.logo` / `theme.favicon` no `mkdocs.yml`) e como o herói de aterrissagem no `docs/index.md`.
+Para trocá-la:
 
-1. Replace `docs/assets/b3-logo.jpg` with your own asset (keep the filename, or
-   update the two `mkdocs.yml` paths and the `<img>` in `docs/index.md`).
-2. Tune size and placement in `docs/stylesheets/extra.css` — the `.hero-logo` rule: `max-width`
-   scales it, and the side margins (`margin: … auto` centers; `float` aligns left/right).
+1. Substitua `docs/assets/b3-logo.jpg` pelo seu próprio arquivo (mantenha o nome, ou atualize os
+   dois caminhos no `mkdocs.yml` e o `<img>` no `docs/index.md`).
+2. Ajuste tamanho e posicionamento no `docs/stylesheets/extra.css` — a regra `.hero-logo`:
+   `max-width` a escala, e as margens laterais (`margin: … auto` centraliza; `float` alinha à
+   esquerda/direita).
 
-## Repository protection & security (one-time, scripted)
+## Proteção do repositório & segurança (uma vez, com script)
 
-`make init` runs three admin-gated helpers. They are **idempotent and non-blocking**: without
-`gh`, without auth, without a GitHub remote, or without repo-admin rights they warn and skip, so
-`init` still completes for contributors and offline scaffolds. Re-run any of them alone later:
+`make init` roda três helpers com gate de admin. Eles são **idempotentes e não bloqueantes**: sem
+`gh`, sem auth, sem um remote do GitHub, ou sem direitos de admin do repositório, eles avisam e
+pulam, então o `init` ainda completa para contribuidores e scaffolds offline. Rode qualquer um
+deles isoladamente depois:
 
-| Target | What it provisions |
+| Alvo | O que provisiona |
 |--------|--------------------|
-| `make enable_pages` | GitHub Pages source (gh-pages branch for versioned docs, else Actions) |
-| `make enable_repo_rules` | The `pr-quality-gate` branch ruleset + the merge settings the PR gate needs |
-| `make enable_security` | Private vulnerability reporting, Dependabot alerts, Dependabot security updates |
+| `make enable_pages` | Fonte do GitHub Pages (branch gh-pages para docs versionada, senão Actions) |
+| `make enable_repo_rules` | O ruleset de branch `pr-quality-gate` + as configurações de merge que o PR gate precisa |
+| `make enable_security` | Relato privado de vulnerabilidades, alertas do Dependabot, atualizações de segurança do Dependabot |
 
-### The `pr-quality-gate` ruleset
+### O ruleset `pr-quality-gate`
 
-Applied to `~DEFAULT_BRANCH` (that ref survives a branch rename), looked up **by name** so a
-re-run updates in place instead of creating a duplicate:
+Aplicado a `~DEFAULT_BRANCH` (essa ref sobrevive a um rename de branch), buscado **pelo nome** para
+que um novo run atualize no lugar em vez de criar uma duplicata:
 
-| Rule | Setting | Why |
+| Regra | Configuração | Porquê |
 |------|---------|-----|
-| `pull_request` | `required_approving_review_count: 0` | ⚠️ **Must be 0.** GitHub forbids approving your own PR, so any value ≥ 1 locks a solo maintainer out of merging their own work. Zero still forces every change through a PR — that is the real guardrail. |
-| `pull_request` | `required_review_thread_resolution: true` | Makes review comments **binding**: an unresolved thread blocks the merge instead of being decorative. |
-| `code_scanning` | CodeQL, security `high_or_higher`, alerts `errors` | Alerts stay at `errors`: `errors_and_warnings`/`all` start blocking merges on stylistic queries, duplicating ruff/mypy with noise. |
-| `copilot_code_review` | `review_on_push: true` | Its **own rule type** — not a `pull_request` parameter (that returns HTTP 422 and makes the feature look UI-only). |
-| `non_fast_forward`, `deletion` | on | No force-push, no branch deletion on the default branch. |
-| `required_status_checks` | **empty by default** | ⚠️ Deliberate. A required check whose name never reports blocks **every** PR forever. Populate `REQUIRED_CHECKS` in `bin/enable_repo_rules.sh` from a real PR — `gh api repos/:owner/:repo/commits/<sha>/check-runs --jq ".check_runs[].name"` — then re-run. |
+| `pull_request` | `required_approving_review_count: 0` | ⚠️ **Precisa ser 0.** O GitHub proíbe aprovar o próprio PR, então qualquer valor ≥ 1 tranca um mantenedor solo para fora do merge do próprio trabalho. Zero ainda força toda mudança por um PR — essa é a real guarda. |
+| `pull_request` | `required_review_thread_resolution: true` | Torna os comentários de review **vinculantes**: uma thread não resolvida bloqueia o merge em vez de ser decorativa. |
+| `code_scanning` | CodeQL, security `high_or_higher`, alerts `errors` | Alertas ficam em `errors`: `errors_and_warnings`/`all` começam a bloquear merges em queries estilísticas, duplicando ruff/mypy com ruído. |
+| `copilot_code_review` | `review_on_push: true` | É o **próprio tipo de regra** — não um parâmetro de `pull_request` (isso retorna HTTP 422 e faz o recurso parecer só de UI). |
+| `non_fast_forward`, `deletion` | ligados | Sem force-push, sem deleção de branch no branch padrão. |
+| `required_status_checks` | **vazio por padrão** | ⚠️ Deliberado. Um check obrigatório cujo nome nunca reporta bloqueia **todo** PR para sempre. Preencha `REQUIRED_CHECKS` em `bin/enable_repo_rules.sh` a partir de um PR real — `gh api repos/:owner/:repo/commits/<sha>/check-runs --jq ".check_runs[].name"` — depois rode de novo. |
 
-**Deliberately not enabled:** *Require code quality results* (subjective AI severity on the merge
-path — ruff, mypy and the `bin/check_*.py` gates already enforce quality deterministically) and
-*Restrict code coverage* (preview; the floor is single-sourced in `.coveragerc` `fail_under`).
+**Deliberadamente não habilitado:** *Require code quality results* (severidade subjetiva de IA no
+caminho de merge — ruff, mypy e os gates `bin/check_*.py` já impõem qualidade deterministicamente) e
+*Restrict code coverage* (preview; o piso é fonte única no `.coveragerc` `fail_under`).
 
-### Automatic vs manual — the boundary is repo config vs account plan
+### Automático vs manual — a fronteira é config do repo vs plano da conta
 
-**Nothing here needs a click.** Every *repository* setting above is scripted. What is **not**
-scriptable is your *account's* entitlement: the `copilot_code_review` rule only fires if the author
-has access to Copilot code review, and **code review is not part of Copilot Free**. Without a
-qualifying plan the rule sits correctly configured and **inert** — no review appears and nothing
-errors. That silence is the trap, because the ruleset JSON looks perfect either way.
+**Nada aqui precisa de um clique.** Toda configuração de *repositório* acima é script. O que **não**
+é script é o direito da sua *conta*: a regra `copilot_code_review` só dispara se o autor tem acesso
+ao Copilot code review, e **code review não faz parte do Copilot Free**. Sem um plano qualificado, a
+regra fica corretamente configurada e **inerte** — nenhum review aparece e nada dá erro. Esse
+silêncio é a armadilha, porque o JSON do ruleset parece perfeito de qualquer jeito.
 
-Every other rule (PR required, CI green, CodeQL clean) works regardless of any Copilot plan, so
-the ruleset is worth applying unconditionally. Copilot Pro is free for verified students,
-teachers and popular-OSS maintainers.
+Toda outra regra (PR obrigatório, CI verde, CodeQL limpo) funciona independentemente de qualquer
+plano do Copilot, então o ruleset vale a pena ser aplicado incondicionalmente. O Copilot Pro é
+gratuito para estudantes, professores e mantenedores de OSS populares verificados.
 
-> Do **not** diagnose this with `gh api user/copilot_billing` → 404: that endpoint is for
-> org/enterprise seat management and 404s for a personal account even when Copilot Free is active.
+> **Não** diagnostique isso com `gh api user/copilot_billing` → 404: esse endpoint é para
+> gerenciamento de assentos de org/enterprise e dá 404 para uma conta pessoal mesmo com o Copilot
+> Free ativo.
 
-### Security
+### Segurança
 
-`SECURITY.md` at the repo root is auto-detected by GitHub (no API call) and flips *Security
-policy* to Enabled; `make enable_security` turns on the matching private-reporting intake plus
-Dependabot alerts and security updates. Ordinary version bumps are separate — see
-`.github/dependabot.yml`, which uses `versioning-strategy: lockfile-only` so it refreshes
-`poetry.lock` (keeping CI honest about what consumers install) without ever rewriting your
-`pyproject` ranges.
+`SECURITY.md` na raiz do repositório é autodetectado pelo GitHub (sem chamada de API) e vira a
+*Security policy* para Enabled; `make enable_security` liga a entrada correspondente de relato
+privado, mais os alertas do Dependabot e as atualizações de segurança. Bumps de versão comuns são
+separados — veja `.github/dependabot.yml`, que usa `versioning-strategy: lockfile-only` para
+atualizar o `poetry.lock` (mantendo a CI honesta sobre o que os consumidores instalam) sem nunca
+reescrever suas faixas do `pyproject`.
 
-## Automated PR flow (the quality gate)
+## Fluxo automatizado de PR (o quality gate)
 
-Every PR is classified by `bin/pr_gate.py` (workflow `pr-gate.yaml`), which labels it, posts one
-sticky comment with a per-axis status table, and hands the **safe classes** to GitHub's native
-auto-merge. Two rules are the whole design:
+Todo PR é classificado por `bin/pr_gate.py` (workflow `pr-gate.yaml`), que o rotula, posta um único
+comentário fixo com uma tabela de status por eixo, e entrega as **classes seguras** ao auto-merge
+nativo do GitHub. Duas regras são todo o design:
 
-**Classified by PATH, never by diff size.** The dangerous change is *semantic*, not big: a
-one-character edit to a schema/contract constant is the smallest possible diff and the most
-dangerous — and every test still passes, because the tests assert the contract that was written.
-So size never decides eligibility; the changed paths do. (The one place size still matters — an
-`XL` diff is vetoed — is **waived for a lockfile-only diff**, whose line count tracks how many
-dependency hashes moved, not risk.)
+**Classificado por CAMINHO, nunca por tamanho do diff.** A mudança perigosa é *semântica*, não
+grande: uma edição de um caractere em uma constante de schema/contrato é o menor diff possível e o
+mais perigoso — e todo teste ainda passa, porque os testes afirmam o contrato que foi escrito.
+Então o tamanho nunca decide elegibilidade; os caminhos alterados decidem. (O único lugar onde o
+tamanho ainda importa — um diff `XL` é vetado — é **dispensado para um diff só de lockfile**, cuja
+contagem de linhas acompanha quantos hashes de dependência mudaram, não o risco.)
 
-| Risk class | Paths | Auto-merge? |
+| Classe de risco | Caminhos | Auto-merge? |
 |------------|-------|-------------|
-| `src` | `src/` | ❌ defines what "passing" means |
-| `tests` | `tests/` | ❌ defines what "passing" means |
-| `other` | anything unmatched | ❌ unknown = unsafe (default-deny) |
+| `src` | `src/` | ❌ define o que "passar" significa |
+| `tests` | `tests/` | ❌ define o que "passar" significa |
+| `other` | qualquer coisa não casada | ❌ desconhecido = inseguro (default-deny) |
 | `ci` | `.github/`, `bin/`, `Makefile`, `tasks.sh`, `.pre-commit-config.yaml` | ✅ |
-| `deps` | `pyproject.toml`, `poetry.lock`, `requirements.txt` | ✅ (the test suite is the gate) |
+| `deps` | `pyproject.toml`, `poetry.lock`, `requirements.txt` | ✅ (a suíte de testes é o gate) |
 | `docs` | `docs/`, `mkdocs.yml`, `README.md`, `CHANGELOG.md`, … | ✅ |
 
-**Consent is opt-OUT.** The safe classes auto-merge with **no label**; add `do-not-merge` to force
-a human merge. Native auto-merge **bypasses nothing** — GitHub holds the merge until every required
-check of the ruleset is green, so the gate only decides *eligibility*, never *whether it passed*.
+**O consentimento é opt-OUT.** As classes seguras dão auto-merge **sem label**; adicione
+`do-not-merge` para forçar um merge humano. O auto-merge nativo **não pula nada** — o GitHub segura
+o merge até que todo check obrigatório do ruleset esteja verde, então o gate só decide
+*elegibilidade*, nunca *se passou*.
 
-Edit the risk table (the `RISK_PATHS` constant) in `bin/pr_gate.py` for your project's real layout.
+Edite a tabela de risco (a constante `RISK_PATHS`) em `bin/pr_gate.py` para o layout real do seu
+projeto.
 
-### ⚠️ After changing gate policy, backfill the open PRs
+### ⚠️ Depois de mudar a política do gate, faça o backfill dos PRs abertos
 
-The gate runs on `pull_request` events, so a PR that was **already open** when you change the
-policy (the classification/consent rules in `pr_gate.py`, or `allow_auto_merge` /
-`delete_branch_on_merge`) is **never re-evaluated** — it keeps the labels and auto-merge state it
-got under the old rules until some new event touches it. That is not a bug; the gate simply never
-ran again. So after merging a policy change, run the backfill:
+O gate roda em eventos de `pull_request`, então um PR que já estava **aberto** quando você muda a
+política (as regras de classificação/consentimento em `pr_gate.py`, ou `allow_auto_merge` /
+`delete_branch_on_merge`) **nunca é reavaliado** — ele mantém os labels e o estado de auto-merge que
+recebeu sob as regras antigas até algum evento novo tocá-lo. Isso não é um bug; o gate simplesmente
+nunca rodou de novo. Então, depois de mergear uma mudança de política, rode o backfill:
 
 ```bash
-gh workflow run pr-gate.yaml -f backfill=true   # re-evaluates every open PR
-# for a Dependabot PR, `gh pr comment <n> --body "@dependabot rebase"` also works
+gh workflow run pr-gate.yaml -f backfill=true   # reavalia todo PR aberto
+# para um PR do Dependabot, `gh pr comment <n> --body "@dependabot rebase"` também funciona
 ```
 
-### Bot-merged PRs and the reconciler
+### PRs mergeados por bot e o reconciler
 
-A PR merged by **native auto-merge** (a bot action) does **not** close its linked issue and does
-**not** delete its branch, even with `delete_branch_on_merge` on — bot-performed actions are
-deliberately inert to prevent automation recursion. `pr-reconcile.yaml` fixes both: it closes the
-`Closes #N` issues and deletes the head branch of merged PRs. Its **scheduled daily run is the
-actual fix** — scheduled events are exempt from the "no new workflow runs" suppression that also
-swallows the fast `pull_request: [closed]` path for a bot merge. Latency is up to one day; that is
-the accepted cost of not needing a personal access token.
+Um PR mergeado por **auto-merge nativo** (uma ação de bot) **não** fecha a issue vinculada e **não**
+deleta o branch, mesmo com `delete_branch_on_merge` ligado — ações feitas por bot são
+deliberadamente inertes para prevenir recursão de automação. O `pr-reconcile.yaml` conserta ambos:
+fecha as issues do `Closes #N` e deleta o branch de head dos PRs mergeados. Seu **run diário
+agendado é o conserto real** — eventos agendados são isentos da supressão de "sem novos runs de
+workflow" que também engole o caminho rápido `pull_request: [closed]` de um merge de bot. A latência
+é de até um dia; esse é o custo aceito de não precisar de um personal access token.
 
-### The work-ledger gate
+### O gate de work-ledger
 
-`bin/check_backlog_ledger.py` (pre-commit + CI) fails a branch that touches `src/` or CI paths but
-adds no `docs/backlog/<kebab>_YYYYMMDD_HHMMSS.md` ledger with a `- [ ]` checklist — making the
-per-branch work-ledger convention structural instead of a thing you remember. Routine
-docs/deps/tests-only branches need none.
+`bin/check_backlog_ledger.py` (pre-commit + CI) reprova um branch que toca `src/` ou caminhos de CI
+mas não adiciona um ledger `docs/backlog/<kebab>_YYYYMMDD_HHMMSS.md` com um checklist `- [ ]` —
+tornando a convenção de work-ledger por branch estrutural, em vez de algo que você lembra. Branches
+rotineiros só de docs/deps/tests não precisam de nenhum.

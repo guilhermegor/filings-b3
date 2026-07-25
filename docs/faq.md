@@ -1,37 +1,37 @@
-# **FAQ**
+# **Perguntas frequentes (FAQ)**
 
-Answers to common questions about using and developing this library. Add project-specific
-entries as they come up in issues.
+Respostas às dúvidas comuns sobre usar e desenvolver esta biblioteca. Adicione entradas
+específicas do projeto conforme surgirem nas _issues_.
 
-> **See also:** [Usage](usage.md) · [Examples](examples.md) · [Contributing](contributing.md).
+> **Veja também:** [Uso](usage.md) · [Exemplos](examples.md) · [Contribuindo](contributing.md).
 
 ---
 
-## How do I install it?
+## Como instalo?
 
 ```bash
-pip install <project_name>
+pip install filings-b3
 ```
 
-Replace with the real distribution name and any extras (e.g. `pip install "<project_name>[web]"`).
+## Como adiciono ou atualizo uma dependência?
 
-## How do I add or update a dependency?
-
-Use Poetry so the lock file stays authoritative:
+Use o Poetry para que o _lock file_ continue sendo a fonte de verdade:
 
 ```bash
-poetry add <package>          # runtime dependency
-poetry add --group dev <package>   # dev-only tool
+poetry add <package>               # dependência de runtime
+poetry add --group dev <package>   # ferramenta só de desenvolvimento
 ```
 
-Every package the code imports must be a **direct** dependency — never rely on it arriving
-transitively through another package.
+Todo pacote que o código importa deve ser uma dependência **direta** — nunca dependa dele chegar
+transitivamente por meio de outro pacote.
 
-## Which Python versions are supported?
+## Quais versões do Python são suportadas?
 
-See the `python = "..."` constraint in `pyproject.toml`; CI runs the test matrix against each.
+Veja a restrição `python = "..."` no `pyproject.toml`; a CI roda a matriz de testes contra cada
+uma.
 
-## How is the version determined?
+## Como a versão é determinada?
 
-The version is the **git tag** (via poetry-dynamic-versioning); `pyproject.toml` holds a `0.0.0`
-placeholder. Cut a release from the release workflow — see [Contributing](contributing.md).
+A versão é a **tag do git** (via poetry-dynamic-versioning); o `pyproject.toml` guarda um
+_placeholder_ `0.0.0`. Faça um release pelo workflow de release — veja
+[Contribuindo](contributing.md).
