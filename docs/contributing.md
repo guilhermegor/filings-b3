@@ -49,20 +49,33 @@ O site publicado é **versionado**: um consumidor fixado em um release mais anti
 *daquele release*, não a do HEAD. O [mike](https://github.com/jimporter/mike) mantém a árvore de
 versões no branch `gh-pages` e o MkDocs-Material renderiza o seletor de versões.
 
-Dois workflows dividem o trabalho:
+Os workflows dividem o trabalho:
 
 | Workflow | Gatilho | O que faz |
 |---|---|---|
 | `Docs - Strict Build Check` (`docs.yaml`) | todo push + PR | apenas `mkdocs build --strict` — pega links/nav quebrados antes de um release. **Nunca faz deploy.** |
-| `Release to PyPI` (`release-pypi.yaml`) | release manual | após a publicação no PyPI ter sucesso, faz o deploy da versão publicada com `mike deploy --update-aliases <X.Y> latest` |
+| `Deploy Versioned Docs` (`deploy-docs.yaml`) | 3 pontos de entrada (abaixo) | faz o deploy com `mike deploy --update-aliases <X.Y> latest` |
+| `Release to PyPI` (`release-pypi.yaml`) | release manual | após a publicação no PyPI ter sucesso, **chama** o `deploy-docs.yaml` com a versão publicada |
 
-Como o deploy roda **depois** da publicação, o site só anuncia versões que de fato foram
-publicadas. Observações:
+O `deploy-docs.yaml` tem **três gatilhos**:
+
+1. **`workflow_call`** — o pipeline de release o invoca **depois** da publicação no PyPI, então o
+   site anuncia a versão que de fato foi publicada.
+2. **`workflow_dispatch`** — um mantenedor pode (re)deployar uma versão manualmente pela aba
+   Actions (para semear o `gh-pages`, backfillar docs de uma versão já publicada, etc.).
+3. **`push` em `main`** tocando `docs/**` ou `mkdocs.yml` (exceto `docs/backlog/**`, não publicado)
+   — uma mudança **somente-docs** não gera release, então sem isto ela ficaria invisível até o
+   próximo release re-rodar o mike. No `push` não há versão de entrada, então o deploy mira o slot
+   `X.Y` da **tag de release mais recente** — atualizando-o no lugar, nunca criando um novo.
+
+Observações:
 
 - **A granularidade é `X.Y`** — `1.4.2` e `1.4.7` compartilham a entrada `1.4`; o alias `latest`
   sempre segue o release mais recente e é a versão padrão de aterrissagem.
 - **Prereleases nunca movem o `latest`** — uma versão com sufixo (`1.2.3rc1`) constrói e publica,
   mas o job de deploy da documentação é pulado.
+- **Deploys são serializados** (`concurrency: deploy-docs`) para que um refresh por `push` e um
+  deploy por release não corram no `gh-pages`.
 
 ### Configuração única do Pages
 
