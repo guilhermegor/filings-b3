@@ -59,8 +59,11 @@ jobs:
           reconcile_pr() {
             pr="$1"
             # Only act on a MERGED pr; a closed-unmerged PR must not close its issues.
-            merged=$(gh pr view "$pr" --json merged --jq .merged 2>/dev/null || echo "false")
-            [ "$merged" = "true" ] || return 0
+            # `gh pr view` has NO boolean `merged` field (that was `Unknown JSON field: "merged"`,
+            # swallowed by 2>/dev/null → every PR returned early → the sweep silently no-opped).
+            # The real field is `state`, which is "MERGED" for a merged PR.
+            pr_state=$(gh pr view "$pr" --json state --jq .state 2>/dev/null || echo "")
+            [ "$pr_state" = "MERGED" ] || return 0
 
             # Close each linked issue that is still OPEN (an already-closed one is a no-op).
             for issue in $(gh pr view "$pr" --json closingIssuesReferences \
