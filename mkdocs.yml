@@ -17,8 +17,8 @@ extra_css:
 theme:
   name: material
   # Brand mark served from docs/assets/ (MkDocs only serves files under docs/).
-  logo: assets/b3-brasil-bolsa-balcao.png
-  favicon: assets/b3-brasil-bolsa-balcao.png
+  logo: assets/b3-logo.jpg
+  favicon: assets/b3-logo.jpg
   palette:
     - scheme: default
       primary: indigo

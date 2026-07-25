@@ -1,6 +1,6 @@
 # **Filings B3**
 
-<img src="assets/b3-brasil-bolsa-balcao.png" alt="Filings B3" class="hero-logo">
+<img src="assets/b3-logo.jpg" alt="Filings B3" class="hero-logo">
 
 Simple and efficient Python library to interact with B3 (Brazil's exchange) public datasets.
 Each reader turns one trading session into a typed, contract-validated `pandas.DataFrame`
