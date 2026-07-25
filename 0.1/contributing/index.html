@@ -1209,7 +1209,7 @@ testes na árvore de código nunca revelam:</p>
 <p>O site publicado é <strong>versionado</strong>: um consumidor fixado em um release mais antigo lê a documentação
 <em>daquele release</em>, não a do HEAD. O <a href="https://github.com/jimporter/mike">mike</a> mantém a árvore de
 versões no branch <code>gh-pages</code> e o MkDocs-Material renderiza o seletor de versões.</p>
-<p>Dois workflows dividem o trabalho:</p>
+<p>Os workflows dividem o trabalho:</p>
 <table>
 <thead>
 <tr>
@@ -1225,19 +1225,36 @@ versões no branch <code>gh-pages</code> e o MkDocs-Material renderiza o seletor
 <td>apenas <code>mkdocs build --strict</code> — pega links/nav quebrados antes de um release. <strong>Nunca faz deploy.</strong></td>
 </tr>
 <tr>
+<td><code>Deploy Versioned Docs</code> (<code>deploy-docs.yaml</code>)</td>
+<td>3 pontos de entrada (abaixo)</td>
+<td>faz o deploy com <code>mike deploy --update-aliases &lt;X.Y&gt; latest</code></td>
+</tr>
+<tr>
 <td><code>Release to PyPI</code> (<code>release-pypi.yaml</code>)</td>
 <td>release manual</td>
-<td>após a publicação no PyPI ter sucesso, faz o deploy da versão publicada com <code>mike deploy --update-aliases &lt;X.Y&gt; latest</code></td>
+<td>após a publicação no PyPI ter sucesso, <strong>chama</strong> o <code>deploy-docs.yaml</code> com a versão publicada</td>
 </tr>
 </tbody>
 </table>
-<p>Como o deploy roda <strong>depois</strong> da publicação, o site só anuncia versões que de fato foram
-publicadas. Observações:</p>
+<p>O <code>deploy-docs.yaml</code> tem <strong>três gatilhos</strong>:</p>
+<ol>
+<li><strong><code>workflow_call</code></strong> — o pipeline de release o invoca <strong>depois</strong> da publicação no PyPI, então o
+   site anuncia a versão que de fato foi publicada.</li>
+<li><strong><code>workflow_dispatch</code></strong> — um mantenedor pode (re)deployar uma versão manualmente pela aba
+   Actions (para semear o <code>gh-pages</code>, backfillar docs de uma versão já publicada, etc.).</li>
+<li><strong><code>push</code> em <code>main</code></strong> tocando <code>docs/**</code> ou <code>mkdocs.yml</code> (exceto <code>docs/backlog/**</code>, não publicado)
+   — uma mudança <strong>somente-docs</strong> não gera release, então sem isto ela ficaria invisível até o
+   próximo release re-rodar o mike. No <code>push</code> não há versão de entrada, então o deploy mira o slot
+   <code>X.Y</code> da <strong>tag de release mais recente</strong> — atualizando-o no lugar, nunca criando um novo.</li>
+</ol>
+<p>Observações:</p>
 <ul>
 <li><strong>A granularidade é <code>X.Y</code></strong> — <code>1.4.2</code> e <code>1.4.7</code> compartilham a entrada <code>1.4</code>; o alias <code>latest</code>
   sempre segue o release mais recente e é a versão padrão de aterrissagem.</li>
 <li><strong>Prereleases nunca movem o <code>latest</code></strong> — uma versão com sufixo (<code>1.2.3rc1</code>) constrói e publica,
   mas o job de deploy da documentação é pulado.</li>
+<li><strong>Deploys são serializados</strong> (<code>concurrency: deploy-docs</code>) para que um refresh por <code>push</code> e um
+  deploy por release não corram no <code>gh-pages</code>.</li>
 </ul>
 <h3 id="configuracao-unica-do-pages">Configuração única do Pages<a class="headerlink" href="#configuracao-unica-do-pages" title="Permanent link">&para;</a></h3>
 <p>O mike serve a partir do <strong>branch <code>gh-pages</code></strong>, então o Pages precisa estar configurado como
