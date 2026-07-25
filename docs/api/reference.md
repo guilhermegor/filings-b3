@@ -1,8 +1,11 @@
 # **Referência da API**
 
-Interface pública do `filings-b3`. Tudo abaixo é reexportado a partir da raiz do pacote, então o
-consumidor importa direto de `filings_b3` — nunca de um caminho de módulo de seção, e nunca do
-subpacote privado `_internal` do pacote (ele vai no _wheel_, mas não é API).
+Interface pública do `filings-b3`. Cada _reader_ é importável de **duas formas**, ambas públicas e
+estáveis: a partir da sua macro-seção (`from filings_b3.daily_bulletin import
+BdiStocksSummaryReader`) — a forma organizada, preferível à medida que a biblioteca cresce para além
+de cem conjuntos de dados — ou reexportado de forma plana a partir da raiz (`from filings_b3 import
+BdiStocksSummaryReader`), mantido por retrocompatibilidade. Apenas o subpacote `_internal` é privado
+(ele vai no _wheel_, mas não é API).
 
 > **Veja também:** [Uso](../usage.md) · [Exemplos](../examples.md)
 
@@ -39,7 +42,7 @@ instrumento com a quantidade de negócios e o volume financeiro negociado do dia
 
 ```python
 from datetime import date
-from filings_b3 import BdiStocksSummaryReader
+from filings_b3.daily_bulletin import BdiStocksSummaryReader  # ou: from filings_b3 import …
 
 df = BdiStocksSummaryReader(date(2025, 1, 2)).read()
 ```
@@ -55,7 +58,7 @@ emprestada, o preço médio de empréstimo e o saldo financeiro da posição.
 
 ```python
 from datetime import date
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader  # ou: from filings_b3 import …
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 ```
@@ -79,7 +82,7 @@ filings_b3.__version__  # a versão da distribuição instalada
 
 | Convenção | Regra |
 |-----------|-------|
-| Caminho de import | Somente a partir de `filings_b3`; o subpacote `_internal` é privado |
+| Caminho de import | Seção (`filings_b3.daily_bulletin`, organizada) ou raiz (`filings_b3`, plana) — ambas públicas; só `_internal` é privado |
 | Tipo de retorno | Todo _reader_ retorna um `pandas.DataFrame` tipado, validado por contrato e com proveniência |
 | Números | Dinheiro e qualquer valor cuja parte fracionária importa são `Decimal` exato, nunca `float` |
 | Type hints | Obrigatórios em todas as funções públicas, incluindo `-> None` |

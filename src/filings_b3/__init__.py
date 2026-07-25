@@ -9,8 +9,10 @@ Six macro-sections organise every dataset, each named after the B3 source it rea
 - ``market_data`` — consolidated trades, price/index reports and the legacy BMF portal.
 - ``clearing`` — collateral (garantias) accepted by the clearing house.
 
-Readers are re-exported here, so a consumer writes ``from filings_b3 import
-BdiStocksSummaryReader``: the package layout organises the source tree, never the import.
+Every reader is importable **two ways**, both public and stable: from its macro-section
+(``from filings_b3.daily_bulletin import BdiStocksSummaryReader``) — the organised form,
+preferred as the library grows past a hundred datasets — or re-exported flat from the root
+(``from filings_b3 import BdiStocksSummaryReader``), kept as a backward-compatible convenience.
 
 Every reader returns a typed, contract-validated :class:`pandas.DataFrame` carrying provenance
 columns, and accepts ``path_raw`` to keep the untouched source artifact for a datalake's bronze

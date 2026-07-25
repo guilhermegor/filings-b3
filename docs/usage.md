@@ -28,11 +28,15 @@ proveniência:
 
 ```python
 from datetime import date
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
 ```
+
+Cada _reader_ vive numa **macro-seção** (`daily_bulletin`, `search_trading_session`, …). Importar
+pela seção é a forma organizada e preferida; a reexportação plana a partir da raiz
+(`from filings_b3 import BdiBtbLendingOpenPositionsReader`) continua válida por retrocompatibilidade.
 
 `date_ref` é **obrigatório** — o endpoint do BDI é endereçado por data, então não existe um padrão
 "mais recente". Precisa do dia útil anterior? Calcule-o e passe explicitamente.
