@@ -1,4 +1,4 @@
-# Filings B3 <img src="assets/b3-brasil-bolsa-balcao.png" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
+# Filings B3 <img src="assets/b3-logo.jpg" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
 
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 ![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)
@@ -83,7 +83,7 @@ filings-b3/
 │   ├── CODEOWNERS
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── assets/
-│   └── b3-brasil-bolsa-balcao.png
+│   └── b3-logo.jpg
 ├── bin/
 ├── docs/
 ├── src/filings_b3/
@@ -103,7 +103,7 @@ filings-b3/
 ```
 
 ## 👨‍💻 Authors
-- guilhermegor — [GitHub](https://github.com/guilhermegor)
+- guilhermegor — [GitHub](https://github.com/guilhermegor) | [LinkedIn](https://www.linkedin.com/in/guilhermegor)
 
 ## 📜 License
 This project is licensed under the MIT License — see [LICENSE](LICENSE).
