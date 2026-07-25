@@ -1,4 +1,4 @@
-# Filings B3 <img src="assets/b3-logo.png" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
+# filings-b3 <img src="assets/b3-logo.png" align="right" width="200" style="border-radius: 15px;" alt="filings-b3">
 
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 ![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)

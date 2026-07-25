@@ -18,7 +18,7 @@ problem to everyone, including people who would exploit it, before a fix exists.
 
 Instead, report it privately through GitHub:
 
-1. Go to the **Security** tab of [Filings B3](https://github.com/guilhermegor/filings-b3).
+1. Go to the **Security** tab of [filings-b3](https://github.com/guilhermegor/filings-b3).
 2. Choose **Report a vulnerability** (GitHub private vulnerability reporting).
 3. Describe the issue, the affected version(s), and — if you can — a minimal reproduction.
 

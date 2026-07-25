@@ -1,5 +1,5 @@
-site_name: Filings B3
-site_description: Documentação do Filings B3
+site_name: filings-b3
+site_description: Documentação do filings-b3
 repo_url: https://github.com/guilhermegor/filings-b3
 nav:
   - Início: index.md
@@ -14,8 +14,6 @@ nav:
   - FAQ: faq.md
   - Contribuindo: contributing.md
   - Changelog: changelog.md
-extra_css:
-  - stylesheets/extra.css
 
 theme:
   name: material

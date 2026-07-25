@@ -149,14 +149,15 @@ prioridade explícita contra confusão de dependências (`priority = "explicit"`
 ## Marca do site de documentação
 
 A imagem de marca fica em `docs/assets/b3-logo.png`, conectada como logo/favicon do cabeçalho
-(`theme.logo` / `theme.favicon` no `mkdocs.yml`) e como o herói de aterrissagem no `docs/index.md`.
-Para trocá-la:
+(`theme.logo` / `theme.favicon` no `mkdocs.yml`) e como imagem da landing no `docs/index.md` (e do
+cabeçalho do `README.md`). Para trocá-la:
 
 1. Substitua `docs/assets/b3-logo.png` pelo seu próprio arquivo (mantenha o nome, ou atualize os
-   dois caminhos no `mkdocs.yml` e o `<img>` no `docs/index.md`).
-2. Ajuste tamanho e posicionamento no `docs/stylesheets/extra.css` — a regra `.hero-logo`:
-   `max-width` a escala, e as margens laterais (`margin: … auto` centraliza; `float` alinha à
-   esquerda/direita).
+   dois caminhos no `mkdocs.yml`, o `<img>` no `docs/index.md` e o do `README.md`). O `README.md`
+   renderiza a partir da cópia na raiz `assets/b3-logo.png` (o GitHub resolve relativo à raiz).
+2. Ajuste **tamanho, posição e borda** direto nos atributos do `<img>` — `width="200"` (escala),
+   `align="right"` (posição) e `style="border-radius: 15px;"` (borda arredondada) — no `docs/index.md`
+   e no `README.md`.
 
 ## Proteção do repositório & segurança (uma vez, com script)
 
