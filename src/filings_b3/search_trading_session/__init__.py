@@ -8,9 +8,10 @@ Template-Method base (``_base_pregao_reader``) built around download → locate 
 Includes the ``IN`` instruments file and its eight variants, ``PR`` (price report), ``IR``
 (index report), and the derivatives/equities/fee/FX families.
 
-Every concrete reader is re-exported here, and again from the package root, so consumers write
-``from filings_b3 import InstrumentsFileReader`` — the nesting organises the source tree, never
-the import.
+Every concrete reader is public from this section path — ``from
+filings_b3.search_trading_session import InstrumentsFileReader``, the organised form — and
+re-exported flat from the package root (``from filings_b3 import InstrumentsFileReader``) as a
+backward-compatible convenience.
 """
 
 __all__: list[str] = []

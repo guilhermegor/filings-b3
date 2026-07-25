@@ -76,6 +76,17 @@ _PUBLIC_SURFACE: frozenset[str] = frozenset(
 	}
 )
 
+# The per-section public surface. Each macro-section directory is itself a stable public import
+# path (`from filings_b3.daily_bulletin import …`), not merely a source-tree folder — so its
+# `__all__` is API too, and earns the same frozen-snapshot treatment as the root. The keys are the
+# public sections; a section appearing, or a reader added to one, is a deliberate one-line diff
+# here, never an accident. A section whose first reader has not landed yet
+# (`search_trading_session`) is listed with an empty set: the path is public, it exports nothing.
+_SECTION_SURFACE: dict[str, frozenset[str]] = {
+	"daily_bulletin": frozenset({"BdiBtbLendingOpenPositionsReader", "BdiStocksSummaryReader"}),
+	"search_trading_session": frozenset(),
+}
+
 # Optional-extra modules that must never be imported at package-import time. The `Reader` port
 # is plain HTTP + tabular parsing; a source genuinely needing a browser or a PDF engine gets a
 # separate base behind the `scraping` / `pdf` extras, imported lazily inside the method that
@@ -86,6 +97,25 @@ _HEAVY_MODULES: tuple[str, ...] = (
 	"fitz",
 	"pdfplumber",
 )
+
+
+def _public_sections() -> list[str]:
+	"""Return every public macro-section package directly under the package root.
+
+	A public section is a subpackage of ``<pkg>`` carrying an ``__init__.py`` whose name is not
+	underscore-prefixed — which excludes ``_internal`` and ``__pycache__`` without naming either.
+	Derived rather than listed so a newly added section cannot silently escape the gate.
+
+	Returns
+	-------
+	list of str
+		Sorted section package names (e.g. ``["daily_bulletin", "search_trading_session"]``).
+	"""
+	return sorted(
+		path.name
+		for path in _PKG_DIR.iterdir()
+		if path.is_dir() and (path / "__init__.py").exists() and not path.name.startswith("_")
+	)
 
 
 def _internal_modules() -> list[Path]:
@@ -218,6 +248,60 @@ def test_no_exported_name_is_underscore_private() -> None:
 		bool_dunder = str_name.startswith("__") and str_name.endswith("__")
 		assert bool_dunder or not str_name.startswith("_"), (
 			f"{str_name!r} is private by name but exported; rename it or drop the export"
+		)
+
+
+def test_public_sections_match_the_frozen_snapshot() -> None:
+	"""The set of public macro-sections equals the snapshot — a new section is deliberate.
+
+	A section directory is a public import path (#122), so its *appearance* widens the API surface
+	exactly as a new root export does. Deriving the set from the tree and comparing it to a
+	hand-maintained snapshot turns adding a section into a reviewable one-line diff in this file.
+	"""
+	assert set(_public_sections()) == set(_SECTION_SURFACE), (
+		"the set of public macro-sections changed; update _SECTION_SURFACE if that was deliberate"
+	)
+
+
+@pytest.mark.parametrize("str_section", sorted(_SECTION_SURFACE), ids=lambda s: s)
+def test_public_section_surface_matches_the_frozen_snapshot(str_section: str) -> None:
+	"""Each section's ``__all__`` equals its snapshot — widening a section is deliberate.
+
+	The same guarantee gate 1 gives the root, applied to every public section path: a reader
+	re-exported "just for convenience" becomes API the moment it ships, so each widening is a
+	reviewable diff in ``_SECTION_SURFACE`` rather than an accident.
+
+	Parameters
+	----------
+	str_section : str
+		A public macro-section package name.
+	"""
+	mod_section = __import__(f"{_PKG}.{str_section}", fromlist=["__all__"])
+
+	assert frozenset(mod_section.__all__) == _SECTION_SURFACE[str_section], (
+		f"{_PKG}.{str_section} surface changed; update _SECTION_SURFACE if that was deliberate"
+	)
+
+
+@pytest.mark.parametrize("str_section", sorted(_SECTION_SURFACE), ids=lambda s: s)
+def test_every_section_export_is_reexported_at_the_root(str_section: str) -> None:
+	"""Every section reader is also exported flat from the root — the convenience never rots.
+
+	#122 keeps the flat root import as a backward-compatible convenience beside the organised
+	section path. That promise is real only if enforced: a reader added to a section but forgotten
+	at the root would leave ``from filings_b3 import <Reader>`` broken for that name.
+
+	Parameters
+	----------
+	str_section : str
+		A public macro-section package name.
+	"""
+	mod_section = __import__(f"{_PKG}.{str_section}", fromlist=["__all__"])
+
+	for str_name in mod_section.__all__:
+		assert str_name in _PUBLIC_SURFACE, (
+			f"{_PKG}.{str_section} exports {str_name!r} but the root does not re-export it — "
+			"add it to the package __init__ so the flat import stays valid"
 		)
 
 

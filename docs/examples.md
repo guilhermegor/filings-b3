@@ -6,6 +6,10 @@ do pregão.
 > **Veja também:** [Uso](usage.md) para o básico · [Referência da API](api/index.md) para cada
 > símbolo público.
 
+Os _readers_ são importados pela sua **macro-seção** (`from filings_b3.daily_bulletin import …`), a
+forma organizada e preferida; a reexportação plana a partir da raiz (`from filings_b3 import …`)
+continua válida por retrocompatibilidade.
+
 ---
 
 ## Receita: ler as posições em aberto de empréstimo de ativos de um pregão
@@ -15,7 +19,7 @@ maiores posições por saldo financeiro.
 
 ```python
 from datetime import date
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 
@@ -28,7 +32,7 @@ print(top[["TCKR_SYMB", "ISIN", "STOCK_BALANCE", "BALANCE"]])
 
 ```python
 from datetime import date
-from filings_b3 import BdiStocksSummaryReader
+from filings_b3.daily_bulletin import BdiStocksSummaryReader
 
 df = BdiStocksSummaryReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "NMBR_TRADES_DAY", "VLM_TRADED_DAY"]].head())
@@ -43,7 +47,7 @@ rastreável e uma quebra de contrato fica reproduzível contra os bytes exatos q
 ```python
 from datetime import date
 from pathlib import Path
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(
     date(2025, 1, 2), path_raw=Path("/data/bronze/b3")
@@ -61,7 +65,7 @@ totais publicados pela própria B3.
 ```python
 from datetime import date
 from decimal import Decimal
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 

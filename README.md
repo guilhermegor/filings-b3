@@ -59,11 +59,15 @@ poetry shell
 ### Uso básico
 ```python
 from datetime import date
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
 ```
+
+Importar pela **macro-seção** (`filings_b3.daily_bulletin`) é a forma organizada e preferida; a
+reexportação plana a partir da raiz (`from filings_b3 import BdiBtbLendingOpenPositionsReader`)
+continua válida por retrocompatibilidade.
 
 `date_ref` é **obrigatório** — o endpoint do BDI é endereçado por data, então não existe um padrão
 "mais recente". Veja a [documentação](https://guilhermegor.github.io/filings-b3/) para cada _reader_
