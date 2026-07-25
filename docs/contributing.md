@@ -148,11 +148,11 @@ prioridade explícita contra confusão de dependências (`priority = "explicit"`
 
 ## Marca do site de documentação
 
-A imagem de marca fica em `docs/assets/b3-logo.jpg`, conectada como logo/favicon do cabeçalho
+A imagem de marca fica em `docs/assets/b3-logo.png`, conectada como logo/favicon do cabeçalho
 (`theme.logo` / `theme.favicon` no `mkdocs.yml`) e como o herói de aterrissagem no `docs/index.md`.
 Para trocá-la:
 
-1. Substitua `docs/assets/b3-logo.jpg` pelo seu próprio arquivo (mantenha o nome, ou atualize os
+1. Substitua `docs/assets/b3-logo.png` pelo seu próprio arquivo (mantenha o nome, ou atualize os
    dois caminhos no `mkdocs.yml` e o `<img>` no `docs/index.md`).
 2. Ajuste tamanho e posicionamento no `docs/stylesheets/extra.css` — a regra `.hero-logo`:
    `max-width` a escala, e as margens laterais (`margin: … auto` centraliza; `float` alinha à

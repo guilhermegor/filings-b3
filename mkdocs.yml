@@ -22,8 +22,8 @@ theme:
   # Idioma da interface do Material (busca, "Próximo"/"Anterior", etc.) em português.
   language: pt-BR
   # Brand mark served from docs/assets/ (MkDocs only serves files under docs/).
-  logo: assets/b3-logo.jpg
-  favicon: assets/b3-logo.jpg
+  logo: assets/b3-logo.png
+  favicon: assets/b3-logo.png
   palette:
     - scheme: default
       primary: indigo

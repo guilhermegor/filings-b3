@@ -1,6 +1,6 @@
 # **Filings B3**
 
-<img src="assets/b3-logo.jpg" alt="Filings B3" class="hero-logo">
+<img src="assets/b3-logo.png" alt="Filings B3" class="hero-logo">
 
 Biblioteca Python simples e eficiente para acessar os conjuntos de dados públicos da B3 (a bolsa
 brasileira). Cada _reader_ transforma um pregão em um `pandas.DataFrame` tipado, validado por

@@ -1,4 +1,4 @@
-# Filings B3 <img src="assets/b3-logo.jpg" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
+# Filings B3 <img src="assets/b3-logo.png" align="right" width="200" style="border-radius: 15px;" alt="Filings B3">
 
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 ![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)
@@ -87,7 +87,7 @@ filings-b3/
 │   ├── CODEOWNERS
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── assets/
-│   └── b3-logo.jpg
+│   └── b3-logo.png
 ├── bin/
 ├── docs/
 ├── src/filings_b3/
