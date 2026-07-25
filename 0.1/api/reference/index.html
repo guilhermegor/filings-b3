@@ -745,9 +745,12 @@
 
 
 <h1 id="referencia-da-api"><strong>Referência da API</strong><a class="headerlink" href="#referencia-da-api" title="Permanent link">&para;</a></h1>
-<p>Interface pública do <code>filings-b3</code>. Tudo abaixo é reexportado a partir da raiz do pacote, então o
-consumidor importa direto de <code>filings_b3</code> — nunca de um caminho de módulo de seção, e nunca do
-subpacote privado <code>_internal</code> do pacote (ele vai no <em>wheel</em>, mas não é API).</p>
+<p>Interface pública do <code>filings-b3</code>. Cada <em>reader</em> é importável de <strong>duas formas</strong>, ambas públicas e
+estáveis: a partir da sua macro-seção (<code>from filings_b3.daily_bulletin import
+BdiStocksSummaryReader</code>) — a forma organizada, preferível à medida que a biblioteca cresce para além
+de cem conjuntos de dados — ou reexportado de forma plana a partir da raiz (<code>from filings_b3 import
+BdiStocksSummaryReader</code>), mantido por retrocompatibilidade. Apenas o subpacote <code>_internal</code> é privado
+(ele vai no <em>wheel</em>, mas não é API).</p>
 <blockquote>
 <p><strong>Veja também:</strong> <a href="../../usage/">Uso</a> · <a href="../../examples/">Exemplos</a></p>
 </blockquote>
@@ -790,7 +793,7 @@ anexadas a todo <em>frame</em>: <code>url</code>, <code>updated_at</code>, <code
 <p>O resumo por pregão do mercado à vista de ações (tabela <code>DailyAverageStocks</code> da B3): uma linha por
 instrumento com a quantidade de negócios e o volume financeiro negociado do dia.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiStocksSummaryReader</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3.daily_bulletin</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiStocksSummaryReader</span>  <span class="c1"># ou: from filings_b3 import …</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiStocksSummaryReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span></code></pre></div>
@@ -801,7 +804,7 @@ instrumento com a quantidade de negócios e o volume financeiro negociado do dia
 <code>BTBLendingOpenPosition</code> da B3): uma linha por instrumento ainda em aberto, com a quantidade
 emprestada, o preço médio de empréstimo e o saldo financeiro da posição.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3.daily_bulletin</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>  <span class="c1"># ou: from filings_b3 import …</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span></code></pre></div>
@@ -825,7 +828,7 @@ emprestada), <code>AVG_PRIC</code> (<code>Decimal</code>), <code>BALANCE</code> 
 <tbody>
 <tr>
 <td>Caminho de import</td>
-<td>Somente a partir de <code>filings_b3</code>; o subpacote <code>_internal</code> é privado</td>
+<td>Seção (<code>filings_b3.daily_bulletin</code>, organizada) ou raiz (<code>filings_b3</code>, plana) — ambas públicas; só <code>_internal</code> é privado</td>
 </tr>
 <tr>
 <td>Tipo de retorno</td>

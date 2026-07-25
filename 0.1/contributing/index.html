@@ -1379,7 +1379,7 @@ nunca rodou de novo. Então, depois de mergear uma mudança de política, rode o
 <h3 id="prs-mergeados-por-bot-e-o-reconciler">PRs mergeados por bot e o reconciler<a class="headerlink" href="#prs-mergeados-por-bot-e-o-reconciler" title="Permanent link">&para;</a></h3>
 <p>Um PR mergeado por <strong>auto-merge nativo</strong> (uma ação de bot) <strong>não</strong> fecha a issue vinculada e <strong>não</strong>
 deleta o branch, mesmo com <code>delete_branch_on_merge</code> ligado — ações feitas por bot são
-deliberadamente inertes para prevenir recursão de automação. O <code>pr-reconcile.yaml</code> conserta ambos:
+deliberadamente inertes para prevenir recursão de automação. O <code>reconcile-merged-prs.yaml</code> conserta ambos:
 fecha as issues do <code>Closes #N</code> e deleta o branch de head dos PRs mergeados. Seu <strong>run diário
 agendado é o conserto real</strong> — eventos agendados são isentos da supressão de "sem novos runs de
 workflow" que também engole o caminho rápido <code>pull_request: [closed]</code> de um merge de bot. A latência
