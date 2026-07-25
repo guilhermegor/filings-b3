@@ -20,7 +20,7 @@
         
       
       
-      <link rel="icon" href="../assets/logo.png">
+      <link rel="icon" href="../assets/b3-logo.jpg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
@@ -100,7 +100,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Filings B3" class="md-header__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../assets/b3-logo.jpg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -235,7 +235,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Filings B3" class="md-nav__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../assets/b3-logo.jpg" alt="logo">
 
     </a>
     Filings B3
@@ -376,10 +376,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recipe" class="md-nav__link">
+  <a href="#recipe-read-a-sessions-securities-lending-open-positions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recipe:
+        Recipe: read a session's securities-lending open positions
       
     </span>
   </a>
@@ -387,10 +387,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recipe_1" class="md-nav__link">
+  <a href="#recipe-read-the-daily-cash-equities-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recipe:
+        Recipe: read the daily cash-equities summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-keep-the-raw-source-for-a-datalakes-bronze-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: keep the raw source for a datalake's bronze layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-compute-money-totals-without-float-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: compute money totals without float drift
       
     </span>
   </a>
@@ -623,10 +645,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recipe" class="md-nav__link">
+  <a href="#recipe-read-a-sessions-securities-lending-open-positions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recipe:
+        Recipe: read a session's securities-lending open positions
       
     </span>
   </a>
@@ -634,10 +656,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recipe_1" class="md-nav__link">
+  <a href="#recipe-read-the-daily-cash-equities-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recipe:
+        Recipe: read the daily cash-equities summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-keep-the-raw-source-for-a-datalakes-bronze-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: keep the raw source for a datalake's bronze layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-compute-money-totals-without-float-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: compute money totals without float drift
       
     </span>
   </a>
@@ -665,24 +709,59 @@
 
 
 <h1 id="examples"><strong>Examples</strong><a class="headerlink" href="#examples" title="Permanent link">&para;</a></h1>
-<p>Task-oriented, self-contained snippets for common uses of this library. Each recipe stands
-alone — copy it and adjust.</p>
+<p>Task-oriented, self-contained snippets. Each recipe stands alone — copy it and adjust the
+session date.</p>
 <blockquote>
 <p><strong>See also:</strong> <a href="../usage/">Usage</a> for the basics · <a href="../api/">API Reference</a> for every public
 symbol.</p>
 </blockquote>
 <hr />
-<h2 id="recipe">Recipe: <a common task><a class="headerlink" href="#recipe" title="Permanent link">&para;</a></h2>
-<p>Briefly describe the problem this recipe solves, then show the smallest working snippet.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">project_name</span><span class="o">&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">main</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<h2 id="recipe-read-a-sessions-securities-lending-open-positions">Recipe: read a session's securities-lending open positions<a class="headerlink" href="#recipe-read-a-sessions-securities-lending-open-positions" title="Permanent link">&para;</a></h2>
+<p>Pull the end-of-session BTB open-position snapshot for one trading day and inspect the largest
+positions by financial balance.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Replace with a real, runnable example of your public API.</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">main</span><span class="p">()</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># BALANCE is an exact Decimal (BRL) — safe to sort and sum without float drift.</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">top</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;BALANCE&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">top</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;ISIN&quot;</span><span class="p">,</span> <span class="s2">&quot;STOCK_BALANCE&quot;</span><span class="p">,</span> <span class="s2">&quot;BALANCE&quot;</span><span class="p">]])</span>
 </span></code></pre></div>
-<h2 id="recipe_1">Recipe: <another task><a class="headerlink" href="#recipe_1" title="Permanent link">&para;</a></h2>
-<p>Add one <code>##</code> section per recipe. Comments in the code should explain <strong>why</strong>, not just what.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Replace with a second illustrative example.</span>
+<h2 id="recipe-read-the-daily-cash-equities-summary">Recipe: read the daily cash-equities summary<a class="headerlink" href="#recipe-read-the-daily-cash-equities-summary" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiStocksSummaryReader</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiStocksSummaryReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;NMBR_TRADES_DAY&quot;</span><span class="p">,</span> <span class="s2">&quot;VLM_TRADED_DAY&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</span></code></pre></div>
+<h2 id="recipe-keep-the-raw-source-for-a-datalakes-bronze-layer">Recipe: keep the raw source for a datalake's bronze layer<a class="headerlink" href="#recipe-keep-the-raw-source-for-a-datalakes-bronze-layer" title="Permanent link">&para;</a></h2>
+<p>Pass <code>path_raw</code> to retain each untouched JSON page. Combined with the provenance columns on every
+frame (<code>content_hash</code>, <code>url</code>, <code>updated_at</code>), a stored row stays fully attributable and a contract
+break is replayable against the exact bytes that caused it.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">path_raw</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/bronze/b3&quot;</span><span class="p">)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Provenance travels with the data — no separate metadata store needed.</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;source_key&quot;</span><span class="p">,</span> <span class="s2">&quot;content_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;updated_at&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span></code></pre></div>
+<h2 id="recipe-compute-money-totals-without-float-drift">Recipe: compute money totals without float drift<a class="headerlink" href="#recipe-compute-money-totals-without-float-drift" title="Permanent link">&para;</a></h2>
+<p>Every monetary column is a <code>decimal.Decimal</code>, so aggregations reconcile against B3's own
+published totals exactly.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;BALANCE&quot;</span><span class="p">])</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">)</span>  <span class="c1"># never a lossy float64</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total open-position balance: R$ </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 

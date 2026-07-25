@@ -20,7 +20,7 @@
         
       
       
-      <link rel="icon" href="../../assets/logo.png">
+      <link rel="icon" href="../../assets/b3-logo.jpg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
@@ -100,7 +100,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Filings B3" class="md-header__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../../assets/logo.png" alt="logo">
+  <img src="../../assets/b3-logo.jpg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -235,7 +235,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="Filings B3" class="md-nav__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../../assets/logo.png" alt="logo">
+  <img src="../../assets/b3-logo.jpg" alt="logo">
 
     </a>
     Filings B3
@@ -480,22 +480,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module-main" class="md-nav__link">
+  <a href="#module-daily_bulletin-boletim-diario-do-pregao-bdi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module: main
+        Module: daily_bulletin — Boletim Diário do Pregão (BDI)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Module: main">
+    <nav class="md-nav" aria-label="Module: daily_bulletin — Boletim Diário do Pregão (BDI)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#main-none" class="md-nav__link">
+  <a href="#bdistockssummaryreader" class="md-nav__link">
     <span class="md-ellipsis">
       
-        main() -&gt; None
+        BdiStocksSummaryReader
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bdibtblendingopenpositionsreader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BdiBtbLendingOpenPositionsReader
       
     </span>
   </a>
@@ -508,10 +519,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-new-modules" class="md-nav__link">
+  <a href="#__version__" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding new modules
+        __version__
       
     </span>
   </a>
@@ -653,22 +664,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module-main" class="md-nav__link">
+  <a href="#module-daily_bulletin-boletim-diario-do-pregao-bdi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module: main
+        Module: daily_bulletin — Boletim Diário do Pregão (BDI)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Module: main">
+    <nav class="md-nav" aria-label="Module: daily_bulletin — Boletim Diário do Pregão (BDI)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#main-none" class="md-nav__link">
+  <a href="#bdistockssummaryreader" class="md-nav__link">
     <span class="md-ellipsis">
       
-        main() -&gt; None
+        BdiStocksSummaryReader
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bdibtblendingopenpositionsreader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BdiBtbLendingOpenPositionsReader
       
     </span>
   </a>
@@ -681,10 +703,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-new-modules" class="md-nav__link">
+  <a href="#__version__" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding new modules
+        __version__
       
     </span>
   </a>
@@ -723,25 +745,73 @@
 
 
 <h1 id="api-reference"><strong>API Reference</strong><a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
-<p>Public interface for this library.</p>
+<p>Public interface for <code>filings-b3</code>. Everything below is re-exported from the package root, so a
+consumer imports from <code>filings_b3</code> directly — never from a section module path, and never from
+the package's private <code>_internal</code> subpackage (it ships in the wheel but is not API).</p>
 <blockquote>
-<p><strong>See also:</strong> <a href="../../usage/">Usage</a></p>
+<p><strong>See also:</strong> <a href="../../usage/">Usage</a> · <a href="../../examples/">Examples</a></p>
 </blockquote>
 <hr />
-<h2 id="module-main">Module: <code>main</code><a class="headerlink" href="#module-main" title="Permanent link">&para;</a></h2>
-<p>Entry point module. Extend this with your library's public functions.</p>
-<h3 id="main-none"><code>main() -&gt; None</code><a class="headerlink" href="#main-none" title="Permanent link">&para;</a></h3>
-<p>Runs the library entry point. Replace the body with your top-level logic.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">package_name</span><span class="o">&gt;.</span><span class="n">main</span> <span class="kn">import</span><span class="w"> </span><span class="nn">main</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">main</span><span class="p">()</span>
+<h2 id="module-daily_bulletin-boletim-diario-do-pregao-bdi">Module: <code>daily_bulletin</code> — Boletim Diário do Pregão (BDI)<a class="headerlink" href="#module-daily_bulletin-boletim-diario-do-pregao-bdi" title="Permanent link">&para;</a></h2>
+<p>B3's daily trading bulletin, served from <code>arquivos.b3.com.br/bdi</code>. Each dataset is a paginated
+JSON table; a reader turns one trading session into a typed, contract-validated
+<code>pandas.DataFrame</code> carrying provenance.</p>
+<p>Every reader shares the same shape:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Reader</span><span class="p">(</span><span class="n">date_ref</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">path_raw</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reader</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">Reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>
 </span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date_ref</code></td>
+<td><code>datetime.date</code></td>
+<td>Trading session to read. <strong>Required, no default</strong> — the endpoint is date-addressed, so a wrong-session guess is worse than a <code>TypeError</code>.</td>
+</tr>
+<tr>
+<td><code>path_raw</code></td>
+<td><code>pathlib.Path</code>, optional</td>
+<td>Directory in which to <strong>keep</strong> each downloaded raw JSON page (a datalake's bronze layer). <code>None</code> (default) uses a temporary directory removed on exit.</td>
+</tr>
+</tbody>
+</table>
+<p><code>read()</code> returns a DataFrame whose columns are the source's own, upper-snake-cased
+(<code>TckrSymb</code> → <code>TCKR_SYMB</code>), typed explicitly (never pandas' inference). Money columns are exact
+<code>decimal.Decimal</code>, never binary <code>float</code>. Six provenance columns are appended to every frame:
+<code>url</code>, <code>updated_at</code>, <code>source_key</code>, <code>package_version</code>, <code>ingestion_run_id</code>, <code>content_hash</code>. A
+source that violates its declared contract raises <code>ContractError</code>.</p>
+<h3 id="bdistockssummaryreader"><code>BdiStocksSummaryReader</code><a class="headerlink" href="#bdistockssummaryreader" title="Permanent link">&para;</a></h3>
+<p>The per-session cash-equities summary (B3 table <code>DailyAverageStocks</code>): one row per instrument
+with the day's trade count and traded financial volume.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiStocksSummaryReader</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiStocksSummaryReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Key columns: <code>TCKR_SYMB</code> (ticker), <code>NMBR_TRADES_DAY</code> (<code>Int64</code>), <code>VLM_TRADED_DAY</code> (<code>Decimal</code>, BRL).</p>
+<h3 id="bdibtblendingopenpositionsreader"><code>BdiBtbLendingOpenPositionsReader</code><a class="headerlink" href="#bdibtblendingopenpositionsreader" title="Permanent link">&para;</a></h3>
+<p>The end-of-session securities-lending (<em>banco de títulos</em>, "BTB") snapshot (B3 table
+<code>BTBLendingOpenPosition</code>): one row per instrument still out on loan, with the quantity on loan,
+its average lending price, and the position's financial balance.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Key columns: <code>DT_REF</code> (session date), <code>TCKR_SYMB</code>, <code>ISIN</code>, <code>STOCK_BALANCE</code> (<code>Int64</code>, qty on
+loan), <code>AVG_PRIC</code> (<code>Decimal</code>), <code>BALANCE</code> (<code>Decimal</code>, BRL).</p>
 <hr />
-<h2 id="adding-new-modules">Adding new modules<a class="headerlink" href="#adding-new-modules" title="Permanent link">&para;</a></h2>
-<p>Place new modules under <code>src/&lt;package_name&gt;/</code>. Export public symbols from <code>src/&lt;package_name&gt;/__init__.py</code> so callers can do:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">package_name</span><span class="o">&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">my_function</span>
+<h2 id="__version__"><code>__version__</code><a class="headerlink" href="#__version__" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">filings_b3</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">filings_b3</span><span class="o">.</span><span class="n">__version__</span>  <span class="c1"># the installed distribution version</span>
 </span></code></pre></div>
-<p>Follow the one-class-per-file convention: utility functions with no shared state belong at module level, not wrapped in a class.</p>
 <hr />
 <h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
 <table>
@@ -753,20 +823,24 @@
 </thead>
 <tbody>
 <tr>
+<td>Import path</td>
+<td>From <code>filings_b3</code> only; the <code>_internal</code> subpackage is private</td>
+</tr>
+<tr>
+<td>Return type</td>
+<td>Every reader returns a typed, contract-validated <code>pandas.DataFrame</code> with provenance</td>
+</tr>
+<tr>
+<td>Numbers</td>
+<td>Money and any value whose fractional part matters are exact <code>Decimal</code>, never <code>float</code></td>
+</tr>
+<tr>
 <td>Type hints</td>
-<td>Required on all public functions, including <code>-&gt; None</code> return types</td>
+<td>Required on all public functions, including <code>-&gt; None</code></td>
 </tr>
 <tr>
 <td>Docstrings</td>
 <td>NumPy style; explain <em>why</em>, not <em>what</em></td>
-</tr>
-<tr>
-<td>Variable names</td>
-<td>Type-prefixed (<code>str_</code>, <code>list_</code>, <code>cls_</code>, <code>dict_</code>, …)</td>
-</tr>
-<tr>
-<td>Testing</td>
-<td><code>unittest</code>; one assertion per test; name as <code>test_&lt;unit&gt;_&lt;scenario&gt;_&lt;expected&gt;</code></td>
 </tr>
 </tbody>
 </table>

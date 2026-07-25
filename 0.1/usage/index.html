@@ -20,7 +20,7 @@
         
       
       
-      <link rel="icon" href="../assets/logo.png">
+      <link rel="icon" href="../assets/b3-logo.jpg">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
@@ -100,7 +100,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Filings B3" class="md-header__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../assets/b3-logo.jpg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -235,7 +235,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Filings B3" class="md-nav__button md-logo" aria-label="Filings B3" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../assets/b3-logo.jpg" alt="logo">
 
     </a>
     Filings B3
@@ -371,10 +371,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-from-the-makefile" class="md-nav__link">
+  <a href="#keeping-the-raw-artifact-bronze-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running from the Makefile
+        Keeping the raw artifact (bronze layer)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-every-reader-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What every reader guarantees
       
     </span>
   </a>
@@ -689,10 +700,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-from-the-makefile" class="md-nav__link">
+  <a href="#keeping-the-raw-artifact-bronze-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running from the Makefile
+        Keeping the raw artifact (bronze layer)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-every-reader-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What every reader guarantees
       
     </span>
   </a>
@@ -753,27 +775,50 @@
 
 
 <h1 id="usage"><strong>Usage</strong><a class="headerlink" href="#usage" title="Permanent link">&para;</a></h1>
-<p>Examples for installing and using this library.</p>
+<p>Installing and using <code>filings-b3</code> — typed access to B3 (Brazil's exchange) public datasets.</p>
 <blockquote>
-<p><strong>See also:</strong> <a href="../api/">API Reference</a></p>
+<p><strong>See also:</strong> <a href="../api/">API Reference</a> · <a href="../examples/">Examples</a></p>
 </blockquote>
 <hr />
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>&lt;package-name&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>filings-b3
 </span></code></pre></div>
 <p>Or with Poetry:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>poetry<span class="w"> </span>add<span class="w"> </span>&lt;package-name&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>poetry<span class="w"> </span>add<span class="w"> </span>filings-b3
 </span></code></pre></div>
 <hr />
 <h2 id="basic-usage">Basic usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">package_name</span><span class="o">&gt;.</span><span class="n">main</span> <span class="kn">import</span><span class="w"> </span><span class="nn">main</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">main</span><span class="p">()</span>
+<p>Every reader takes the trading session to read and returns a typed
+<code>pandas.DataFrame</code> carrying provenance columns:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3</span><span class="w"> </span><span class="kn">import</span> <span class="n">BdiBtbLendingOpenPositionsReader</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;STOCK_BALANCE&quot;</span><span class="p">,</span> <span class="s2">&quot;BALANCE&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </span></code></pre></div>
-<hr />
-<h2 id="running-from-the-makefile">Running from the Makefile<a class="headerlink" href="#running-from-the-makefile" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>start<span class="w">         </span><span class="c1"># runs src/&lt;package_name&gt;/main.py via Poetry</span>
+<p><code>date_ref</code> is <strong>required</strong> — the BDI endpoint is date-addressed, so there is no
+"latest" default. Want the previous business day? Compute it and pass it.</p>
+<h2 id="keeping-the-raw-artifact-bronze-layer">Keeping the raw artifact (bronze layer)<a class="headerlink" href="#keeping-the-raw-artifact-bronze-layer" title="Permanent link">&para;</a></h2>
+<p>Pass <code>path_raw</code> to retain each untouched source page for a datalake's bronze
+layer — a contract break is then replayable against the exact bytes:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">path_raw</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/bronze/b3&quot;</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span></code></pre></div>
+<h2 id="what-every-reader-guarantees">What every reader guarantees<a class="headerlink" href="#what-every-reader-guarantees" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Columns are the source's own, upper-snake-cased and <strong>explicitly typed</strong> — never pandas'
+  inference.</li>
+<li>Money columns (<code>BALANCE</code>, <code>AVG_PRIC</code>, <code>VLM_TRADED_DAY</code>, …) are exact <code>decimal.Decimal</code>, never
+  binary <code>float</code>.</li>
+<li>Six provenance columns on every frame: <code>url</code>, <code>updated_at</code>, <code>source_key</code>, <code>package_version</code>,
+  <code>ingestion_run_id</code>, <code>content_hash</code>.</li>
+<li>A source that violates its declared contract raises <code>ContractError</code> — a missing required
+  column fails loudly rather than silently.</li>
+</ul>
+<p>See the <a href="../api/reference/">API Reference</a> for the full reader list.</p>
 <hr />
 <h2 id="running-tests">Running tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>unit_tests<span class="w">         </span><span class="c1"># unit tests only</span>
@@ -786,7 +831,7 @@
 </span></code></pre></div>
 <hr />
 <h2 id="publishing-to-pypi">Publishing to PyPI<a class="headerlink" href="#publishing-to-pypi" title="Permanent link">&para;</a></h2>
-<p>Two GitHub Actions workflows handle releases (present when the repo has a GitHub remote):</p>
+<p>Two GitHub Actions workflows handle releases:</p>
 <ul>
 <li><strong><code>release-test-pypi.yaml</code></strong> — publish to <a href="https://test.pypi.org">Test PyPI</a> first.</li>
 <li><strong><code>release-pypi.yaml</code></strong> — publish to <a href="https://pypi.org">PyPI</a> and cut a GitHub release.</li>
@@ -794,11 +839,6 @@
 <p>Trigger either from the <strong>Actions</strong> tab (<code>workflow_dispatch</code>) with the version to release.
 Both gate on the new version being greater than the latest already published, build with
 Poetry, and fall back to <code>twine</code> if <code>poetry publish</code> is unavailable.</p>
-<p>Configure once, in repository settings:</p>
-<ul>
-<li>Secrets <code>PYPI_TOKEN</code> and <code>TEST_PYPI_TOKEN</code> (API tokens from each index).</li>
-<li>A GitHub <strong>Environment</strong> named <code>release</code>.</li>
-</ul>
 
 
 
