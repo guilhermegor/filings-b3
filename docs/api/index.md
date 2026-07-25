@@ -1,14 +1,23 @@
 # **Referência da API**
 
-A interface pública, agrupada pela própria divisão de alto nível do código.
+A interface pública, agrupada pelas **macro-seções** do próprio código — cada seção é uma pasta com
+uma visão geral (`index.md`) e **uma página por _reader_** (`Descrição` + `Exemplos`).
 
-> **Veja também:** [Uso](../usage.md)
+> **Veja também:** [Uso](../usage.md) · [Exemplos](../examples.md)
 
-## Páginas
+## Macro-seções
 
-| Grupo | Conteúdo |
-|-------|----------|
-| [Referência](reference.md) | A superfície pública disponível desde o primeiro dia |
+| Seção | Import público | Estado |
+|-------|----------------|--------|
+| [Boletim Diário do Pregão (BDI)](daily_bulletin/index.md) | `filings_b3.daily_bulletin` | **2 _readers_** |
+| Pesquisa por Pregão | `filings_b3.search_trading_session` | _planejada_ |
+| Plataformas (PUMA) | `filings_b3.platforms` | _planejada_ |
+| Índices | `filings_b3.indexes` | _planejada_ |
+| Dados de mercado | `filings_b3.market_data` | _planejada_ |
+| _Clearing_ (garantias) | `filings_b3.clearing` | _planejada_ |
+
+Cada _reader_ é importável pela sua seção (forma organizada, preferida) **e** reexportado de forma
+plana a partir da raiz `filings_b3` (retrocompatível). Só o subpacote `_internal` é privado.
 
 ## Fazendo esta seção crescer
 
@@ -17,6 +26,10 @@ unidade publicada, então um único `api.md` vira a maior página do repositóri
 trivial, mas **apodrece todos os links profundos publicados** — e permanentemente, uma vez que a
 documentação versionada esteja no ar, porque `/<version>/api/#anchor` existe para sempre. O prêmio
 por começar como diretório é um arquivo extra e um nível de navegação, pago uma única vez.
+
+A convenção concreta desta seção: **uma pasta por macro-seção** (`daily_bulletin/`, …), com um
+`index.md` de visão geral (o catálogo de _readers_ + a prosa compartilhada) e **uma página por
+_reader_** (`Descrição` + `Exemplos`). Uma seção só nasce no disco com o seu primeiro _reader_.
 
 Ao adicionar páginas:
 

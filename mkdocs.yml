@@ -7,7 +7,10 @@ nav:
   - Exemplos: examples.md
   - Referência da API:
       - Visão geral: api/index.md
-      - Referência: api/reference.md
+      - Boletim Diário (BDI):
+          - Visão geral: api/daily_bulletin/index.md
+          - Posições em aberto de BTB: api/daily_bulletin/btb_lending_open_positions.md
+          - Resumo de ações: api/daily_bulletin/stocks_summary.md
   - FAQ: faq.md
   - Contribuindo: contributing.md
   - Changelog: changelog.md

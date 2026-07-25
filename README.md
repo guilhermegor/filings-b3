@@ -20,8 +20,8 @@ contrato e com proveniência — valores monetários como `Decimal` exato, nunca
 ## ✨ Principais recursos
 
 ### 📊 Readers do Boletim Diário (BDI)
-- [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
-- [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/reference/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
+- [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/stocks_summary/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
+- [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/btb_lending_open_positions/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
 
 ### 🔒 Fidelidade por construção
 - **Tipagem explícita** — toda coluna tipada na carga, nunca a inferência do pandas.

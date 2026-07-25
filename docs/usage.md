@@ -65,7 +65,7 @@ df = BdiBtbLendingOpenPositionsReader(
 - Uma fonte que viola o contrato declarado levanta `ContractError` — uma coluna obrigatória
   ausente falha de forma barulhenta, em vez de silenciosa.
 
-Veja a [Referência da API](api/reference.md) para a lista completa de _readers_.
+Veja a [Referência da API](api/index.md) para a lista completa de _readers_, organizada por seção.
 
 ---
 
