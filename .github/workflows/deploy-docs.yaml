@@ -6,13 +6,19 @@ name: Deploy Versioned Docs (mike)
 # The push uses the built-in GITHUB_TOKEN (`contents: write`) — no external credential, no OIDC
 # needed, since it writes a branch in this same repo.
 #
-# Two entry points:
+# Three entry points:
 #   - workflow_call  — the release pipeline (release-pypi.yaml) invokes this AFTER the PyPI
 #     publish succeeds, passing the shipped version, so the docs site only ever documents a
 #     version that actually released.
 #   - workflow_dispatch — a maintainer can seed / re-deploy a version manually from the Actions
 #     tab (e.g. to bootstrap gh-pages, backfill docs for an already-published version, or refresh
 #     the site after a docs-only change that did not warrant a package release).
+#   - push (to main, docs paths only) — a docs-only change never warrants a package release, so
+#     without this it would stay invisible until the next release re-ran mike. On push there is no
+#     `version` input, so the deploy targets the LATEST released tag's X.Y slot (the current
+#     release's docs slot) — refreshing it in place, never creating a new one. `docs/backlog/**` is
+#     excluded: it is unpublished (see mkdocs `exclude_docs`), so a ledger-only merge is a no-op for
+#     the built site and must not trigger a redeploy.
 on:
   workflow_call:
     inputs:
@@ -26,6 +32,19 @@ on:
         description: 'Version to (re)deploy docs for (e.g. 1.2.3) — deployed at X.Y granularity.'
         required: true
         type: string
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '!docs/backlog/**'
+      - 'mkdocs.yml'
+
+# Serialize every deploy path so a push-triggered refresh and a release-triggered deploy can never
+# race on the gh-pages branch (mike reads-modifies-writes the version tree). Do NOT cancel in
+# progress: a half-applied mike push would leave gh-pages inconsistent.
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
 
 jobs:
   deploy_docs:
@@ -68,14 +87,31 @@ jobs:
       - name: Compute X.Y Alias
         id: docs_version
         env:
+          # Empty on a push event (no inputs); set on workflow_call / workflow_dispatch.
           NEW_VERSION: ${{ inputs.version }}
         run: |
+          # On workflow_call / workflow_dispatch the version is passed in. On a push (docs-only
+          # change) there is no input, so fall back to the latest release tag — the docs refresh
+          # the CURRENT release's minor slot, never creating a new one. fetch-depth:0 above fetches
+          # the tags this reads.
+          if [ -z "$NEW_VERSION" ]; then
+            NEW_VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+          fi
+          # No input and no tag yet (docs pushed before the first release): there is no versioned
+          # docs slot to refresh, so skip rather than fail — the first release will seed gh-pages.
+          if [ -z "$NEW_VERSION" ]; then
+            echo "No version input and no release tag yet — skipping (first release seeds docs)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Docs are versioned at minor granularity (the project bumps minor per release), so a
           # patch inherits its minor's docs slot instead of proliferating entries.
           MINOR_VERSION="$(echo "$NEW_VERSION" | cut -d. -f1-2)"
           echo "minor=$MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Deploy with mike
+        # Skipped only on the push-before-first-release path (no tag to derive a slot from).
+        if: steps.docs_version.outputs.skip != 'true'
         # Pass the computed alias through env, never interpolate `${{ }}` straight into the shell —
         # a malformed `version` input would otherwise survive the `cut` and inject into `run:`.
         env:
