@@ -1,0 +1,68 @@
+# **Arquivo de instrumentos (BVBG.028.02) — Pesquisa por Pregão**
+
+Leitura do **arquivo de instrumentos** do pregão (`IN{aammdd}.zip`), um XML ISO-20022
+`InstrumentReport` (BVBG.028.02) que identifica todos os instrumentos registrados na B3 para a
+sessão, publicado em `www.b3.com.br/pesquisapregao/download`.
+
+> **Veja também:** [Visão geral da seção](index.md) para a forma do _reader_, proveniência e
+> `path_raw` · [Uso](../../usage.md) para instalação e o conceito geral.
+
+---
+
+## Descrição
+
+`InstrumentsFileReader` baixa o `IN{aammdd}.zip`, extrai o seu único membro XML, **achata** cada
+registro de instrumento em uma linha e devolve um `DataFrame` tipado, validado por contrato e com
+proveniência. O arquivo consolida **todos os mercados** — ações, futuros, opções, ouro, estratégias
+e renda fixa — e cada tipo carrega os seus campos sob um bloco XML diferente (o _ticker_ de uma ação
+vive em `EqtyInf`, o de um futuro em `FutrCtrctsInf`, e assim por diante); cada coluna resolve o
+**primeiro** desses caminhos alternativos que existir no registro.
+
+O layout de colunas vem do mapeamento autoritativo da B3 **`BVBG.028 para UP2DATA`**
+(planilha `InstrumentsConsolidatedFile`, 52 campos) — a própria B3 achata o XML aninhado nele. O
+contrato exige apenas as colunas presentes em **todo** instrumento (o bloco de identificação:
+`REPORT_DATE`, `TICKER_SYMBOL`, `ASSET`, `ASSET_DESCRIPTION`, `SEGMENT_NAME`, `MARKET_NAME`,
+`ISIN`); os muitos campos específicos de tipo fluem como colunas tipadas, nulas quando não se
+aplicam ao instrumento da linha.
+
+Colunas de data (`EXPIRATION_DATE`, `TRADING_START_DATE`, …) são `datetime.date`; colunas de
+valor/quantidade (`CONTRACT_MULTIPLIER`, `EXERCISE_PRICE`, `MARKET_CAPITALISATION`, …) são
+`decimal.Decimal` exato. As demais preservam o texto exato da fonte.
+
+---
+
+## Exemplos
+
+### Ler os instrumentos de um pregão
+
+```python
+from datetime import date
+from filings_b3.search_trading_session import InstrumentsFileReader
+
+df = InstrumentsFileReader(date(2025, 1, 2)).read()
+print(df[["TICKER_SYMBOL", "ASSET", "MARKET_NAME", "ISIN"]].head())
+```
+
+`date_ref` é **obrigatório** — o endpoint é endereçado por data. Precisa do dia útil anterior?
+Calcule-o e passe explicitamente.
+
+### Filtrar por mercado
+
+Uma única leitura traz todos os mercados; filtre pela coluna de classificação:
+
+```python
+futuros = df[df["MARKET_NAME"] == "FUTURE"]
+print(futuros[["TICKER_SYMBOL", "EXPIRATION_DATE", "CONTRACT_MULTIPLIER"]].head())
+```
+
+### Manter o artefato bruto (camada _bronze_)
+
+```python
+from pathlib import Path
+
+df = InstrumentsFileReader(
+    date(2025, 1, 2), path_raw=Path("/data/bronze/b3")
+).read()
+
+print(df[["source_key", "content_hash", "updated_at"]].iloc[0])
+```

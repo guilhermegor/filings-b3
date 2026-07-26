@@ -10,7 +10,7 @@ uma visão geral (`index.md`) e **uma página por _reader_** (`Descrição` + `E
 | Seção | Import público | Estado |
 |-------|----------------|--------|
 | [Boletim Diário do Pregão (BDI)](daily_bulletin/index.md) | `filings_b3.daily_bulletin` | **2 _readers_** |
-| Pesquisa por Pregão | `filings_b3.search_trading_session` | _planejada_ |
+| [Pesquisa por Pregão](search_trading_session/index.md) | `filings_b3.search_trading_session` | **1 _reader_** |
 | Plataformas (PUMA) | `filings_b3.platforms` | _planejada_ |
 | Índices | `filings_b3.indexes` | _planejada_ |
 | Dados de mercado | `filings_b3.market_data` | _planejada_ |
