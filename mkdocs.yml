@@ -11,6 +11,9 @@ nav:
           - Visão geral: api/daily_bulletin/index.md
           - Posições em aberto de BTB: api/daily_bulletin/btb_lending_open_positions.md
           - Resumo de ações: api/daily_bulletin/stocks_summary.md
+      - Pesquisa por Pregão:
+          - Visão geral: api/search_trading_session/index.md
+          - Arquivo de instrumentos: api/search_trading_session/instruments_file.md
   - FAQ: faq.md
   - Contribuindo: contributing.md
   - Changelog: changelog.md

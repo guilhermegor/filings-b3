@@ -109,21 +109,40 @@ per `fixtures-verbatim-exclude-whitespace-hooks` discipline).
 
 ## Build plan (TDD)
 
-- [ ] `_internal/utils/xml_reader.py` seam: parse an XML file/bytes → `pd.DataFrame` given a
-      **row anchor** (repeating `<InstrmInf>` parent) + an ordered **column→path spec** with
-      per-row OR-alternative resolution. Keep parser import (`xml.etree.ElementTree` — stdlib, no new
-      dep) inside the seam. Unit-test with a **synthetic minimal XML** (2–3 instrument types).
-- [ ] `contracts/search_trading_session/instruments_file.py`: `FileContract` pinning the 52-col
-      header (subset of required vs full-column — decide against the live fixture).
-- [ ] `search_trading_session/instruments_file.py`: `InstrumentsFileReader` — `build_url` =
-      `{PREGAO_DOWNLOAD_BASE}?filelist=IN{date_ref:%y%m%d}.zip`; override the read to unzip → XML →
-      `xml_reader` → typed/contract/provenance. `list_date_cols` + `list_decimal_cols` per the marks
-      above.
-- [ ] Public API: export `InstrumentsFileReader` from `search_trading_session/__init__` (add to
-      `_SECTION_SURFACE` in `test_api_boundary.py`) + root re-export.
-- [ ] Docs: `docs/api/search_trading_session/{index,instruments_file}.md` + nav; update the api map.
-- [ ] Tests: unit (seam + reader with the pinned fixture), integration mirroring package structure.
+- [x] `_internal/utils/xml_reader.py` seam — `read_xml(path, row_tag, dict_paths, dtypes, contract,
+      dict_scalars, date_cols, decimal_cols)`. Namespace-agnostic (local-name match), OR-alternative
+      resolution, scalar broadcast, shared contract+dtype tail. Parses via **defusedxml** (trust
+      boundary), not bare `xml.etree`. 3 unit tests (synthetic 2-record XML). Committed `7138bc3`.
+- [x] `contracts/search_trading_session/instruments_file.py` — `INSTRUMENTS_FILE` **subset**
+      contract (7 universal identity cols required; `bool_full_column=False`). Registered in the
+      section + top-level contracts `__init__`.
+- [x] `search_trading_session/instruments_file.py` — `InstrumentsFileReader` implements the
+      `IngestionReader` port directly (XML doesn't fit the tabular base). Full 52-field path spec
+      from the UP2DATA layout as module constants; `_ROW_TAG` isolated for reconcile. `build_url` =
+      `IN{date_ref:%y%m%d}.zip`; read = download → unzip → single-XML → `read_xml` → provenance.
+      `list_date_cols` (8) + `list_decimal_cols` (5); rest `str`.
+- [x] Public API: exported from `search_trading_session/__init__` + root re-export; boundary gate
+      `_PUBLIC_SURFACE` + `_SECTION_SURFACE` updated (58 passed).
+- [x] Docs: `docs/api/search_trading_session/{index,instruments_file}.md` + nav; api map updated
+      (section now "1 reader"). `.codespellrc` extended with pt-BR terms.
+- [x] Tests: unit — `test_xml_reader.py` (seam) + `test_instruments_file.py` (reader, download
+      mocked, synthetic IN.zip). No per-reader network integration test (matches daily_bulletin;
+      live-verify is the manual pre-merge step below). Full suite 207 passed; ruff/mypy/typing clean.
 - [ ] On merge: `/release-py` (feat → minor per pre-1.0).
+
+## ⚠ PRE-MERGE LIVE RECONCILE — do NOT merge until done
+
+The code is built against the **authoritative UP2DATA layout** and proven by a synthetic fixture,
+but three things are unverifiable without a real IN file (the dev clock is future-dated → B3 serves
+an empty ZIP). Before merge, capture ONE genuine `IN{yymmdd}.zip` from a real recent B3 business day
+and reconcile:
+
+1. **`_ROW_TAG`** (currently `"InstrmRcrd"`, an assumption) — confirm the actual repeating
+   instrument-record element's local name. Single-point-of-change constant in the reader.
+2. **The single-XML-member assumption** and its encoding — confirm the ZIP holds exactly one `.xml`.
+3. **Column casing + the 52 XML paths** — confirm the flattened header matches `INSTRUMENTS_FILE`
+   and each field's path/alternatives resolve. Pin the real file as a verbatim test fixture
+   (per `fixtures-verbatim-exclude-whitespace-hooks`).
 
 ## Generalizable lesson (queued, capture on build)
 The `xml_reader` seam (stdlib-ElementTree XML→DataFrame under a FileContract, parser hidden like

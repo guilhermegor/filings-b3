@@ -25,6 +25,7 @@ from filings_b3.daily_bulletin import (
 	BdiBtbLendingOpenPositionsReader,
 	BdiStocksSummaryReader,
 )
+from filings_b3.search_trading_session import InstrumentsFileReader
 
 
 try:
@@ -36,5 +37,6 @@ except PackageNotFoundError:  # pragma: no cover - source tree without an instal
 __all__ = [
 	"BdiBtbLendingOpenPositionsReader",
 	"BdiStocksSummaryReader",
+	"InstrumentsFileReader",
 	"__version__",
 ]

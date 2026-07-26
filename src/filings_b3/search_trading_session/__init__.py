@@ -14,4 +14,7 @@ re-exported flat from the package root (``from filings_b3 import InstrumentsFile
 backward-compatible convenience.
 """
 
-__all__: list[str] = []
+from filings_b3.search_trading_session.instruments_file import InstrumentsFileReader
+
+
+__all__ = ["InstrumentsFileReader"]
