@@ -1,9 +1,0 @@
-/* Brand styles for the landing hero. The logo asset lives at
-   docs/assets/b3-logo.jpg; tune size/placement here. */
-
-.hero-logo {
-    display: block;
-    margin: 1.5rem auto;   /* placement: `auto` side-margins center it; use `float:left|right` to align */
-    max-width: 240px;      /* size: change this one value to scale the landing image */
-    height: auto;
-}

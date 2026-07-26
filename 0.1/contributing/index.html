@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Documentação do Filings B3">
+        <meta name="description" content="Documentação do filings-b3">
       
       
       
@@ -20,12 +20,12 @@
         
       
       
-      <link rel="icon" href="../assets/b3-logo.jpg">
+      <link rel="icon" href="../assets/b3-logo.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Contribuindo - Filings B3</title>
+        <title>Contribuindo - filings-b3</title>
       
     
     
@@ -50,8 +50,6 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-    
-      <link rel="stylesheet" href="../stylesheets/extra.css">
     
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -98,9 +96,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href=".." title="Filings B3" class="md-header__button md-logo" aria-label="Filings B3" data-md-component="logo">
+    <a href=".." title="filings-b3" class="md-header__button md-logo" aria-label="filings-b3" data-md-component="logo">
       
-  <img src="../assets/b3-logo.jpg" alt="logo">
+  <img src="../assets/b3-logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -111,7 +109,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Filings B3
+            filings-b3
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -233,12 +231,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navegação" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Filings B3" class="md-nav__button md-logo" aria-label="Filings B3" data-md-component="logo">
+    <a href=".." title="filings-b3" class="md-nav__button md-logo" aria-label="filings-b3" data-md-component="logo">
       
-  <img src="../assets/b3-logo.jpg" alt="logo">
+  <img src="../assets/b3-logo.png" alt="logo">
 
     </a>
-    Filings B3
+    filings-b3
   </label>
   
     <div class="md-nav__source">
@@ -1333,15 +1331,16 @@ GitHub Packages — configure a fonte do lado do consumidor no <code>pyproject.t
 prioridade explícita contra confusão de dependências (<code>priority = "explicit"</code> do <code>poetry</code>;
 <code>pip --index-url</code>, nunca <code>--extra-index-url</code>).</p>
 <h2 id="marca-do-site-de-documentacao">Marca do site de documentação<a class="headerlink" href="#marca-do-site-de-documentacao" title="Permanent link">&para;</a></h2>
-<p>A imagem de marca fica em <code>docs/assets/b3-logo.jpg</code>, conectada como logo/favicon do cabeçalho
-(<code>theme.logo</code> / <code>theme.favicon</code> no <code>mkdocs.yml</code>) e como o herói de aterrissagem no <code>docs/index.md</code>.
-Para trocá-la:</p>
+<p>A imagem de marca fica em <code>docs/assets/b3-logo.png</code>, conectada como logo/favicon do cabeçalho
+(<code>theme.logo</code> / <code>theme.favicon</code> no <code>mkdocs.yml</code>) e como imagem da landing no <code>docs/index.md</code> (e do
+cabeçalho do <code>README.md</code>). Para trocá-la:</p>
 <ol>
-<li>Substitua <code>docs/assets/b3-logo.jpg</code> pelo seu próprio arquivo (mantenha o nome, ou atualize os
-   dois caminhos no <code>mkdocs.yml</code> e o <code>&lt;img&gt;</code> no <code>docs/index.md</code>).</li>
-<li>Ajuste tamanho e posicionamento no <code>docs/stylesheets/extra.css</code> — a regra <code>.hero-logo</code>:
-   <code>max-width</code> a escala, e as margens laterais (<code>margin: … auto</code> centraliza; <code>float</code> alinha à
-   esquerda/direita).</li>
+<li>Substitua <code>docs/assets/b3-logo.png</code> pelo seu próprio arquivo (mantenha o nome, ou atualize os
+   dois caminhos no <code>mkdocs.yml</code>, o <code>&lt;img&gt;</code> no <code>docs/index.md</code> e o do <code>README.md</code>). O <code>README.md</code>
+   renderiza a partir da cópia na raiz <code>assets/b3-logo.png</code> (o GitHub resolve relativo à raiz).</li>
+<li>Ajuste <strong>tamanho, posição e borda</strong> direto nos atributos do <code>&lt;img&gt;</code> — <code>width="200"</code> (escala),
+   <code>align="right"</code> (posição) e <code>style="border-radius: 15px;"</code> (borda arredondada) — no <code>docs/index.md</code>
+   e no <code>README.md</code>.</li>
 </ol>
 <h2 id="protecao-do-repositorio-seguranca-uma-vez-com-script">Proteção do repositório &amp; segurança (uma vez, com script)<a class="headerlink" href="#protecao-do-repositorio-seguranca-uma-vez-com-script" title="Permanent link">&para;</a></h2>
 <p><code>make init</code> roda três helpers com gate de admin. Eles são <strong>idempotentes e não bloqueantes</strong>: sem
