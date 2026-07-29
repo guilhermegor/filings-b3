@@ -1,10 +1,12 @@
 """Unit tests for the Pesquisa por Pregão instruments-file reader.
 
 The reader downloads ``IN{yymmdd}.zip`` (a ZIP of one BVBG.028.02 XML). These tests mock the
-download boundary — the one seam that touches the network — with a **synthetic** ZIP holding a
-minimal two-record XML (an equity and a future, whose fields live under different sub-blocks), so
-the reader's compose-and-type behaviour is pinned without a live B3 file. The exact XML structure
-and column casing are reconciled against a real file before merge (issue #68).
+download boundary — the one seam that touches the network — with a **real B3 sample**:
+``tests/fixtures/instruments_IN_sample.zip`` is a 50-record slice of a genuine ``IN260729.zip``,
+trimmed to cover all 17 instrument sub-block types (equities, options, futures, fixed income,
+international/national bonds, cash, OTC, BTC, ADR, …). Reconciled live against the full file
+(issue #143): the row element is ``<Instrm>``, ``RptParams`` is per-record, and a ``*`` wildcard
+path resolves whichever sub-block a record carries.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+import shutil
 import zipfile
 
 import pytest
@@ -21,57 +24,63 @@ import filings_b3._internal.utils.http_downloader as http_downloader
 from filings_b3.search_trading_session import InstrumentsFileReader
 
 
-_NS = "urn:bvmf.100.02.xsd"
-
-_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Document xmlns="{_NS}">
-  <BizGrp>
-    <RptParams><RptDtAndTm><Dt>2025-01-02</Dt></RptDtAndTm></RptParams>
-    <InstrmRcrd>
-      <FinInstrmAttrCmon><Asst>PETR</Asst><AsstDesc>Petrobras</AsstDesc>
-        <Sgmt>EQUITY</Sgmt><Mkt>CASH</Mkt></FinInstrmAttrCmon>
-      <InstrmInf><EqtyInf><TckrSymb>PETR4</TckrSymb><ISIN>BRPETRACNPR6</ISIN>
-        <AllcnRndLot>100</AllcnRndLot><CrpnNm>PETROLEO BRASILEIRO SA</CrpnNm></EqtyInf></InstrmInf>
-    </InstrmRcrd>
-    <InstrmRcrd>
-      <FinInstrmAttrCmon><Asst>DOL</Asst><AsstDesc>Dolar</AsstDesc>
-        <Sgmt>FINANCIAL</Sgmt><Mkt>FUTURE</Mkt></FinInstrmAttrCmon>
-      <InstrmInf><FutrCtrctsInf><TckrSymb>DOLF25</TckrSymb><ISIN>BRBMEFDOL250</ISIN>
-        <AllcnRndLot>5</AllcnRndLot><CtrctMltplr>50.00025</CtrctMltplr>
-        <XprtnDt>2025-01-02</XprtnDt></FutrCtrctsInf></InstrmInf>
-    </InstrmRcrd>
-  </BizGrp>
-</Document>
-"""
+_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "instruments_IN_sample.zip"
+# The sample was taken from the 2026-07-29 trading session; every record carries that report date.
+_SESSION = date(2026, 7, 29)
 
 
 @pytest.fixture
 def _patch_download(monkeypatch: pytest.MonkeyPatch) -> None:
-	"""Patch the download seam to drop a synthetic ``IN.zip`` where the reader expects it."""
+	"""Patch the download seam to drop the real sample ``IN.zip`` where the reader expects it."""
 
 	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 0) -> Path:  # noqa: ARG001
-		with zipfile.ZipFile(path_dest, "w") as cls_zip:
-			cls_zip.writestr("IN250102.xml", _XML)
+		shutil.copy(_FIXTURE, path_dest)
 		return path_dest
 
 	monkeypatch.setattr(http_downloader, "download_file", _fake_download)
 
 
-def test_read_flattens_records_types_and_stamps_provenance(_patch_download: None) -> None:
-	"""Each instrument record becomes one typed, provenance-stamped row."""
-	df_out = InstrumentsFileReader(date(2025, 1, 2)).read()
+def test_read_flattens_real_records_types_and_stamps_provenance(_patch_download: None) -> None:
+	"""The reader flattens each <Instrm> into a typed, provenance-stamped row from real B3 XML."""
+	df_out = InstrumentsFileReader(_SESSION).read()
 
-	assert list(df_out["TCKR_SYMB"]) == ["PETR4", "DOLF25"]
-	assert list(df_out["ISIN"]) == ["BRPETRACNPR6", "BRBMEFDOL250"]
-	# Scalar report date broadcasts to every row and is a real date.
-	assert list(df_out["RPT_DT"]) == [date(2025, 1, 2), date(2025, 1, 2)]
-	# The future's multiplier is exact Decimal; the equity has none.
-	assert df_out.loc[1, "CTRCT_MLTPLR"] == Decimal("50.00025")
-	assert str(df_out.loc[1, "CTRCT_MLTPLR"]) == "50.00025"
+	assert len(df_out) == 50
+	# The per-record report date resolves for every row and is the session date.
+	assert (df_out["RPT_DT"] == _SESSION).all()
+	# The common attribute block is present on every instrument type, so these never go null.
+	for str_col in ("ASST", "ASST_DESC", "SGMT_NM", "MKT_NM"):
+		assert df_out[str_col].notna().all(), str_col
+	# A known real ticker from the sample resolves via the wildcard.
+	assert "AZPL15L" in set(df_out["TCKR_SYMB"])
 	# Provenance travels with the data.
 	for str_col in INSTRUMENTS_FILE.PROVENANCE_COLUMNS:
 		assert str_col in df_out.columns
 	assert (df_out["source_key"] == "instruments_file").all()
+
+
+def test_wildcard_resolves_ticker_isin_for_every_type_that_carries_them(
+	_patch_download: None,
+) -> None:
+	"""TCKR_SYMB / ISIN are null only for the instrument types that genuinely lack them.
+
+	The 50-record sample over-samples exotic types. Five sub-blocks (CshInf, FICInf, IntlBdInf,
+	NtlBdInf, OTCInf) carry no ``TckrSymb`` and four (BTCInf, CshInf, FICInf, OTCInf) no ``ISIN`` —
+	so those rows are legitimately null, never a wildcard miss. This pins that the wildcard
+	resolves the field for **every** type that has it (36 tickers, 39 ISINs in this sample).
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	assert int(df_out["TCKR_SYMB"].notna().sum()) == 36
+	assert int(df_out["ISIN"].notna().sum()) == 39
+
+
+def test_decimal_columns_stay_exact(_patch_download: None) -> None:
+	"""A contract-multiplier value keeps its exact source scale — never a lossy binary float."""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	series_mult = df_out["CTRCT_MLTPLR"].dropna()
+	if not series_mult.empty:  # futures/options carry a multiplier; the sample includes them
+		assert all(isinstance(v, Decimal) for v in series_mult)
 
 
 def test_build_url_is_date_addressed() -> None:

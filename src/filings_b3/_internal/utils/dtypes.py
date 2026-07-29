@@ -10,6 +10,7 @@ columns, which need ``to_datetime`` rather than ``astype``.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -115,6 +116,67 @@ def _to_decimal(value: object) -> object:
 
 
 @type_checker
+def _parse_date_scalar(value: object) -> object:
+	"""Parse one source value to a :class:`datetime.date`, tolerating far-future sentinels.
+
+	Python's :class:`datetime.date` spans years 1–9999, so a source sentinel like B3's
+	``9999-12-31`` ("perpetual / no end date") parses to a real date here — where pandas'
+	nanosecond ``Timestamp`` (max ~2262) would overflow. Only the out-of-bounds fallback in
+	:func:`_to_date_series` routes through this; the common in-range path stays vectorised pandas.
+
+	Parameters
+	----------
+	value : object
+		One cell from a date-typed column (ISO ``YYYY-MM-DD``, optionally with a time component).
+
+	Returns
+	-------
+	object
+		A :class:`datetime.date`, or :data:`pandas.NA` for a missing value.
+	"""
+	if value is None or value is pd.NA:
+		return pd.NA
+	if isinstance(value, datetime):
+		return value.date()
+	if isinstance(value, date):
+		return value
+	str_value = str(value).strip()
+	if not str_value or str_value.lower() in {"nan", "nat", "none", "<na>"}:
+		return pd.NA
+	# B3's ISODate is ISO 8601; datetime.fromisoformat handles both the date-only and the
+	# date-with-time forms on the project's Python floor, and both convert to a pure date.
+	return datetime.fromisoformat(str_value).date()
+
+
+@type_checker
+def _to_date_series(series_input: pd.Series) -> pd.Series:
+	"""Coerce a text column to ``datetime.date``, out-of-bounds-safe.
+
+	The fast path is vectorised pandas (``to_datetime``), which handles every in-range date and a
+	variety of formats. A source that carries a date beyond pandas' nanosecond ``Timestamp`` range
+	— B3 uses ``9999-12-31`` as a "no end / perpetual" sentinel in ``TradgEndDt`` / ``XprtnDt`` —
+	makes ``to_datetime`` raise ``OutOfBoundsDatetime``; only then does it fall back to per-element
+	:func:`_parse_date_scalar`, which yields real :class:`datetime.date` objects that preserve the
+	sentinel rather than dropping it to ``NaT``. Readers with only in-range dates keep the fast
+	path unchanged.
+
+	Parameters
+	----------
+	series_input : pandas.Series
+		The date column as read (text).
+
+	Returns
+	-------
+	pandas.Series
+		A column of :class:`datetime.date` objects (object dtype).
+	"""
+	try:
+		return pd.to_datetime(series_input, errors="raise").dt.date
+	except (pd.errors.OutOfBoundsDatetime, OverflowError, ValueError):
+		return series_input.map(_parse_date_scalar)
+
+
+@type_checker
 def apply_dtypes(
 	df_input: pd.DataFrame,
 	dict_dtypes: dict[str, str] | None = None,
@@ -196,7 +258,7 @@ def apply_dtypes(
 		df_typed[str_col] = pd.to_datetime(df_typed[str_col], errors="raise")
 
 	for str_col in list_date_cols:
-		df_typed[str_col] = pd.to_datetime(df_typed[str_col], errors="raise").dt.date
+		df_typed[str_col] = _to_date_series(df_typed[str_col])
 
 	for str_col in list_decimal_cols:
 		df_typed[str_col] = df_typed[str_col].map(_to_decimal)

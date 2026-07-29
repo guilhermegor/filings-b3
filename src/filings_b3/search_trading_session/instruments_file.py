@@ -12,21 +12,23 @@ port's docstring prescribes for a source that fits no tabular family), composing
 flattening the XML through :func:`~filings_b3._internal.utils.xml_reader.read_xml` instead of
 :func:`~filings_b3._internal.utils.tabular_reader.read_table`.
 
-The column→XML-path map (:data:`_DICT_PATHS` / :data:`_DICT_SCALARS`) is B3's authoritative
-``BVBG.028 para UP2DATA`` layout (sheet ``InstrumentsConsolidatedFile``): each flat column resolves
-the first present of its type-specific alternative paths under a record.
+The 52 columns come from B3's authoritative ``BVBG.028 para UP2DATA`` layout (sheet
+``InstrumentsConsolidatedFile``); their names are ``pascal_to_upper_snake`` of the BVBG.028 tag
+abbreviation (matching ``daily_bulletin``). Each column's :data:`_DICT_PATHS` path is resolved
+relative to a record ``<Instrm>``; a ``*`` segment (see :func:`read_xml`) matches whichever of
+B3's 17 instrument sub-blocks the record carries, so one ``InstrmInf/*/<tag>`` path covers every
+type — and any type B3 adds later.
 
-⚠️ **Pending live reconcile (issue #68).** Two things are not yet confirmed against a real ``IN``
-file (the dev clock is future-dated, so B3 serves an empty ZIP for reachable days):
+Verified live against a real ``IN260729.zip`` (issue #143, 183,164 records): the row element is
+``<Instrm>``; ``RptParams`` (hence the report date) is **per-record**, not file-level; and the file
+holds **17** sub-block types, not the 7 the UP2DATA consolidated sheet enumerates (``EqtyInf``,
+``FutrCtrctsInf``, ``OptnOnEqtsInf``, ``ExrcEqtsInf``, ``ADRInf``, ``BTCInf``, ``CshInf``, …). The
+wildcard covers all of them. Columns that a given instrument type does not carry (a cash or bond
+record has no ``TckrSymb``) are legitimately null — the source has no such value.
 
-1. :data:`_ROW_TAG` — the local name of the repeating instrument-record element. The UP2DATA layout
-   gives per-column paths *relative to a record* but not the record tag itself; this is a
-   documented single-point-of-change assumption to verify first.
-2. The multi-alternative XML paths for every field (the column **names** are now pinned to the
-   library convention — ``pascal_to_upper_snake`` of the UP2DATA tag abbreviation — so only the
-   paths and the row tag need confirming against real XML).
-
-Both are isolated to the module-level constants below so reconciling is a localized edit.
+# ponytail: read_xml loads the whole XML tree in memory — the real IN file is ~660 MB (~4 GB
+# resident). Fine on a workstation and for the weekly job; switch read_xml to an iterparse stream
+# keyed on the row tag if a memory-constrained consumer needs it (tracked as a follow-up).
 """
 
 from __future__ import annotations
@@ -52,139 +54,73 @@ from filings_b3.search_trading_session._base_pregao_reader import PREGAO_DOWNLOA
 
 _DISTRIBUTION_NAME = "filings-b3"
 
-# Local name of the repeating instrument-record element (see the ⚠ live-reconcile note above).
-_ROW_TAG = "InstrmRcrd"
+# Local name of the repeating instrument-record element, confirmed against a live IN file:
+# BVBG.028 wraps each instrument in <Instrm> (not the guessed <InstrmRcrd>).
+_ROW_TAG = "Instrm"
 
-# File-level scalar: resolved once against the root and broadcast to every row.
-_DICT_SCALARS: dict[str, str] = {"RPT_DT": "RptParams/RptDtAndTm/Dt"}
+# No file-level scalars: RPT_DT is per-record (each <Instrm> carries its own <RptParams>), so it
+# lives in _DICT_PATHS below, not here.
+_DICT_SCALARS: dict[str, str] = {}
 
-# Column → ordered alternative element paths (relative to a record). The first path that resolves
-# for a given record supplies the value; a record of a different instrument type leaves it empty.
-# Transcribed from the UP2DATA InstrumentsConsolidatedFile layout (BVBG.028.02).
-_EQ = "InstrmInf/EqtyInf"
-_FUT = "InstrmInf/FutrCtrctsInf"
-_OSF = "InstrmInf/OptnOnSpotAndFutrsInf"
-_OEQ = "InstrmInf/OptnOnEqtsInf"
-_GLD = "InstrmInf/SpotGoldInf"
-_STR = "InstrmInf/StrtgyInf"
-_FIX = "InstrmInf/FxdIncmNonTrdblInf"
-_CMON = "FinInstrmAttrCmon"
-
+# Column -> the element path relative to a record <Instrm>. A `*` segment is a single-level
+# wildcard matching whichever instrument sub-block the record carries (BVBG.028 nests each
+# instrument's fields under exactly one of 17 <InstrmInf> sub-blocks — EqtyInf, FutrCtrctsInf,
+# OptnOnEqtsInf, ExrcEqtsInf, ADRInf, BTCInf, …), so one `InstrmInf/*/<tag>` path covers every
+# type and any type B3 adds later. Field tags are B3's BVBG.028 names (confirmed against a live
+# IN file); the common block <FinInstrmAttrCmon> and the strategy legs keep their explicit paths.
 _DICT_PATHS: dict[str, tuple[str, ...]] = {
-	"TCKR_SYMB": (
-		f"{_EQ}/TckrSymb",
-		f"{_FUT}/TckrSymb",
-		f"{_OSF}/TckrSymb",
-		f"{_OEQ}/TckrSymb",
-		f"{_GLD}/TckrSymb",
-		f"{_STR}/TckrSymb",
-		f"{_FIX}/TckrSymb",
-	),
-	"ASST": (f"{_CMON}/Asst",),
-	"ASST_DESC": (f"{_CMON}/AsstDesc",),
-	"SGMT_NM": (f"{_CMON}/Sgmt",),
-	"MKT_NM": (f"{_CMON}/Mkt",),
-	"SCTY_CTGY_NM": (
-		f"{_EQ}/SctyCtgy",
-		f"{_FUT}/SctyCtgy",
-		f"{_OEQ}/SctyCtgy",
-		f"{_STR}/SctyCtgy",
-	),
-	"XPRTN_DT": (f"{_STR}/XprtnDt", f"{_FUT}/XprtnDt", f"{_OSF}/XprtnDt"),
-	"XPRTN_CD": (f"{_STR}/XprtnCd", f"{_FUT}/XprtnCd", f"{_OSF}/XprtnCd"),
-	"TRADG_START_DT": (
-		f"{_EQ}/TradgStartDt",
-		f"{_FUT}/TradgStartDt",
-		f"{_OSF}/TradgStartDt",
-		f"{_OEQ}/TradgStartDt",
-		f"{_GLD}/TradgStartDt",
-		f"{_STR}/TradgStartDt",
-		f"{_FIX}/TradgStartDt",
-	),
-	"TRADG_END_DT": (
-		f"{_EQ}/TradgEndDt",
-		f"{_FUT}/TradgEndDt",
-		f"{_OSF}/TradgEndDt",
-		f"{_OEQ}/TradgEndDt",
-		f"{_GLD}/TradgEndDt",
-		f"{_STR}/TradgEndDt",
-		f"{_FIX}/TradgEndDt",
-	),
-	"BASE_CD": (f"{_FUT}/BaseCd",),
-	"CONVS_CRIT_NM": (f"{_FUT}/ConvsCrit",),
-	"MTRTY_DT_TRGT_PT": (f"{_FUT}/MtrtyDtTrgtPt",),
-	"REQRD_CONVS_IND": (f"{_FUT}/ReqrdConvsInd",),
-	"ISIN": (
-		f"{_EQ}/ISIN",
-		f"{_FUT}/ISIN",
-		f"{_OSF}/ISIN",
-		f"{_OEQ}/ISIN",
-		f"{_GLD}/ISIN",
-		f"{_STR}/ISIN",
-		f"{_FIX}/ISIN",
-	),
-	"CFICD": (
-		f"{_EQ}/CFICd",
-		f"{_FUT}/CFICd",
-		f"{_OSF}/CFICd",
-		f"{_OEQ}/CFICd",
-		f"{_GLD}/CFICd",
-		f"{_STR}/CFICd",
-	),
-	"DLVRY_NTCE_START_DT": (f"{_FUT}/DlvryNtceStartDt",),
-	"DLVRY_NTCE_END_DT": (f"{_FUT}/DlvryNtceEndDt",),
-	"OPTN_TP": (f"{_OEQ}/OptnTp", f"{_OSF}/OptnTp"),
-	"CTRCT_MLTPLR": (
-		f"{_FUT}/CtrctMltplr",
-		f"{_OSF}/CtrctMltplr",
-		f"{_GLD}/CtrctMltplr",
-		f"{_STR}/SttlmIndMltplr",
-	),
-	"ASST_QTN_QTY": (f"{_FUT}/AsstQtnQty", f"{_OSF}/AsstQtnQty", f"{_GLD}/AsstQtnQty"),
-	"ALLCN_RND_LOT": (
-		f"{_EQ}/AllcnRndLot",
-		f"{_FUT}/AllcnRndLot",
-		f"{_OSF}/AllcnRndLot",
-		f"{_OEQ}/AllcnRndLot",
-		f"{_GLD}/AllcnRndLot",
-		f"{_STR}/AllcnRndLot",
-	),
-	"TRADG_CCY": (
-		f"{_EQ}/TradgCcy",
-		f"{_FUT}/TradgCcy",
-		f"{_OSF}/TradgCcy",
-		f"{_OEQ}/TradgCcy",
-		f"{_GLD}/TradgCcy",
-		f"{_STR}/TradgCcy",
-	),
-	"DLVRY_TP_NM": (f"{_OEQ}/DlvryTp", f"{_FUT}/DlvryTp"),
-	"WDRWL_DAYS": (f"{_OSF}/WdrwlDays", f"{_FUT}/WdrwlDays"),
-	"WRKG_DAYS": (f"{_OSF}/WrkgDays", f"{_FUT}/WrkgDays"),
-	"CLNR_DAYS": (f"{_OSF}/ClnrDays", f"{_FUT}/ClnrDays"),
-	"RLVR_BASE_PRIC_NM": (f"{_STR}/RlvrBasePricCd",),
-	"OPNG_FUTR_POS_DAY": (f"{_STR}/OpngFutrPosDay",),
-	"SD_TP_CD1": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
-	"UNDRLYG_TCKR_SYMB1": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
-	"SD_TP_CD2": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
-	"UNDRLYG_TCKR_SYMB2": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
-	"PURE_GOLD_WGHT": (f"{_GLD}/PureGoldWght", f"{_OSF}/PureGoldWght", f"{_FUT}/PureGoldWght"),
-	"EXRC_PRIC": (f"{_OEQ}/ExrcPric", f"{_OSF}/ExrcPric"),
-	"OPTN_STYLE": (f"{_OEQ}/OptnStyle", f"{_OSF}/ExrcStyle"),
-	"VAL_TP_NM": (f"{_FUT}/ValTpCd", f"{_STR}/ValTpCd"),
-	"PRM_UPFRNT_IND": (f"{_OSF}/PrmUpfrntInd", f"{_OEQ}/PrmUpfrntInd"),
-	"OPNG_POS_LMT_DT": (f"{_OSF}/OpngPosLmtDt",),
-	"DSTRBTN_ID": (f"{_OEQ}/DstrbtnId", f"{_EQ}/DstrbtnId"),
-	"PRIC_FCTR": (f"{_EQ}/PricFctr", f"{_OEQ}/PricFctr"),
-	"DAYS_TO_STTLM": (f"{_OEQ}/DaysToSttlm", f"{_EQ}/DaysToSttlm"),
-	"SRS_TP_NM": (f"{_OEQ}/SrsTp",),
-	"PRTCN_FLG": (f"{_OEQ}/PrtcnFlg",),
-	"AUTOMTC_EXRC_IND": (f"{_OEQ}/AutomtcExrcInd",),
-	"SPCFCTN_CD": (f"{_EQ}/SpcfctnCd",),
-	"CRPN_NM": (f"{_EQ}/CrpnNm",),
-	"CORP_ACTN_START_DT": (f"{_EQ}/CorpActnStartDt",),
-	"CTDY_TRTMNT_TP_NM": (f"{_EQ}/CtdyTrtmntTp",),
-	"MKT_CPTLSTN": (f"{_EQ}/MktCptlstn",),
-	"CORP_GOVN_LVL_NM": (f"{_EQ}/GovnInd",),
+	"RPT_DT": ("RptParams/RptDtAndTm/Dt",),
+	"TCKR_SYMB": ("InstrmInf/*/TckrSymb",),
+	"ASST": ("FinInstrmAttrCmon/Asst",),
+	"ASST_DESC": ("FinInstrmAttrCmon/AsstDesc",),
+	"SGMT_NM": ("FinInstrmAttrCmon/Sgmt",),
+	"MKT_NM": ("FinInstrmAttrCmon/Mkt",),
+	"SCTY_CTGY_NM": ("InstrmInf/*/SctyCtgy",),
+	"XPRTN_DT": ("InstrmInf/*/XprtnDt",),
+	"XPRTN_CD": ("InstrmInf/*/XprtnCd",),
+	"TRADG_START_DT": ("InstrmInf/*/TradgStartDt",),
+	"TRADG_END_DT": ("InstrmInf/*/TradgEndDt",),
+	"BASE_CD": ("InstrmInf/*/BaseCd",),
+	"CONVS_CRIT_NM": ("InstrmInf/*/ConvsCrit",),
+	"MTRTY_DT_TRGT_PT": ("InstrmInf/*/MtrtyDtTrgtPt",),
+	"REQRD_CONVS_IND": ("InstrmInf/*/ReqrdConvsInd",),
+	"ISIN": ("InstrmInf/*/ISIN",),
+	"CFICD": ("InstrmInf/*/CFICd",),
+	"DLVRY_NTCE_START_DT": ("InstrmInf/*/DlvryNtceStartDt",),
+	"DLVRY_NTCE_END_DT": ("InstrmInf/*/DlvryNtceEndDt",),
+	"OPTN_TP": ("InstrmInf/*/OptnTp",),
+	"CTRCT_MLTPLR": ("InstrmInf/*/CtrctMltplr",),
+	"ASST_QTN_QTY": ("InstrmInf/*/AsstQtnQty",),
+	"ALLCN_RND_LOT": ("InstrmInf/*/AllcnRndLot",),
+	"TRADG_CCY": ("InstrmInf/*/TradgCcy",),
+	"DLVRY_TP_NM": ("InstrmInf/*/DlvryTp",),
+	"WDRWL_DAYS": ("InstrmInf/*/WdrwlDays",),
+	"WRKG_DAYS": ("InstrmInf/*/WrkgDays",),
+	"CLNR_DAYS": ("InstrmInf/*/ClnrDays",),
+	"RLVR_BASE_PRIC_NM": ("InstrmInf/*/RlvrBasePricCd",),
+	"OPNG_FUTR_POS_DAY": ("InstrmInf/*/OpngFutrPosDay",),
+	"SD_TP_CD1": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/SdTpCd",),
+	"UNDRLYG_TCKR_SYMB1": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/UndrlygInstrmId",),
+	"SD_TP_CD2": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/SdTpCd",),
+	"UNDRLYG_TCKR_SYMB2": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/UndrlygInstrmId",),
+	"PURE_GOLD_WGHT": ("InstrmInf/*/PureGoldWght",),
+	"EXRC_PRIC": ("InstrmInf/*/ExrcPric",),
+	"OPTN_STYLE": ("InstrmInf/*/OptnStyle",),
+	"VAL_TP_NM": ("InstrmInf/*/ValTpCd",),
+	"PRM_UPFRNT_IND": ("InstrmInf/*/PrmUpfrntInd",),
+	"OPNG_POS_LMT_DT": ("InstrmInf/*/OpngPosLmtDt",),
+	"DSTRBTN_ID": ("InstrmInf/*/DstrbtnId",),
+	"PRIC_FCTR": ("InstrmInf/*/PricFctr",),
+	"DAYS_TO_STTLM": ("InstrmInf/*/DaysToSttlm",),
+	"SRS_TP_NM": ("InstrmInf/*/SrsTp",),
+	"PRTCN_FLG": ("InstrmInf/*/PrtcnFlg",),
+	"AUTOMTC_EXRC_IND": ("InstrmInf/*/AutomtcExrcInd",),
+	"SPCFCTN_CD": ("InstrmInf/*/SpcfctnCd",),
+	"CRPN_NM": ("InstrmInf/*/CrpnNm",),
+	"CORP_ACTN_START_DT": ("InstrmInf/*/CorpActnStartDt",),
+	"CTDY_TRTMNT_TP_NM": ("InstrmInf/*/CtdyTrtmntTp",),
+	"MKT_CPTLSTN": ("InstrmInf/*/MktCptlstn",),
+	"CORP_GOVN_LVL_NM": ("InstrmInf/*/GovnInd",),
 }
 
 # Dates → datetime.date; money/quantity/multiplier → exact Decimal (never binary float). Every

@@ -80,25 +80,52 @@ def _first_child(cls_elem: Element, str_local: str) -> Element | None:
 def _resolve_text(cls_elem: Element, str_path: str) -> str | None:
 	"""Resolve a ``/``-joined local-name path of direct children to its leaf text.
 
+	A ``*`` segment is a **single-level wildcard**: it matches any direct child under which the
+	remainder of the path resolves (first match wins). One ``InstrmInf/*/TckrSymb`` path therefore
+	covers every instrument sub-block type without enumerating them — and a sub-block type B3 adds
+	later is picked up automatically, since each record carries exactly one sub-block.
+
 	Parameters
 	----------
 	cls_elem : xml.etree.ElementTree.Element
 		The element the path is relative to.
 	str_path : str
-		A path of local names joined by ``/`` (e.g. ``"InstrmInf/EqtyInf/TckrSymb"``).
+		A path of local names joined by ``/`` (e.g. ``"InstrmInf/EqtyInf/TckrSymb"`` or
+		``"InstrmInf/*/TckrSymb"``).
 
 	Returns
 	-------
 	str or None
 		The stripped leaf text, or ``None`` when any segment is missing or the leaf is empty.
 	"""
-	cls_cur: Element = cls_elem
-	for str_seg in str_path.split("/"):
-		cls_next = _first_child(cls_cur, str_seg)
-		if cls_next is None:
-			return None
-		cls_cur = cls_next
-	str_text = (cls_cur.text or "").strip()
+	str_seg, _, str_rest = str_path.partition("/")
+	if str_seg == "*":
+		for cls_child in cls_elem:
+			str_val = _resolve_text(cls_child, str_rest) if str_rest else _leaf_text(cls_child)
+			if str_val is not None:
+				return str_val
+		return None
+	cls_next = _first_child(cls_elem, str_seg)
+	if cls_next is None:
+		return None
+	return _resolve_text(cls_next, str_rest) if str_rest else _leaf_text(cls_next)
+
+
+@type_checker
+def _leaf_text(cls_elem: Element) -> str | None:
+	"""Return an element's stripped text, or ``None`` when it is empty.
+
+	Parameters
+	----------
+	cls_elem : xml.etree.ElementTree.Element
+		The leaf element.
+
+	Returns
+	-------
+	str or None
+		The stripped text, or ``None`` when blank.
+	"""
+	str_text = (cls_elem.text or "").strip()
 	return str_text or None
 
 
