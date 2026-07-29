@@ -14,6 +14,7 @@ nav:
       - Pesquisa por Pregão:
           - Visão geral: api/search_trading_session/index.md
           - Arquivo de instrumentos: api/search_trading_session/instruments_file.md
+          - Metadados de layout: api/search_trading_session/instruments_layout_meta.md
   - FAQ: faq.md
   - Contribuindo: contributing.md
   - Changelog: changelog.md

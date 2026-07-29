@@ -14,6 +14,9 @@ from __future__ import annotations
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file import (
 	INSTRUMENTS_FILE,
 )
+from filings_b3._internal.config.contracts.search_trading_session.instruments_layout_meta import (
+	INSTRUMENTS_LAYOUT_META,
+)
 
 
-__all__ = ["INSTRUMENTS_FILE"]
+__all__ = ["INSTRUMENTS_FILE", "INSTRUMENTS_LAYOUT_META"]

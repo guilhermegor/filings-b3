@@ -15,6 +15,7 @@ backward-compatible convenience.
 """
 
 from filings_b3.search_trading_session.instruments_file import InstrumentsFileReader
+from filings_b3.search_trading_session.instruments_layout_meta import InstrumentsLayoutMetaReader
 
 
-__all__ = ["InstrumentsFileReader"]
+__all__ = ["InstrumentsFileReader", "InstrumentsLayoutMetaReader"]
