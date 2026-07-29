@@ -7,15 +7,16 @@ instrument, across every market (equities, futures, options, gold, strategies, f
 Column layout is derived from B3's **authoritative** ``BVBG.028 para UP2DATA`` field mapping
 (sheet ``InstrumentsConsolidatedFile``, 52 fields), which is B3's own canonical flattening of the
 nested XML — each flat column maps to a BVBG.028 XML path, with type-specific alternatives (a
-ticker lives under ``EqtyInf`` for an equity, ``FutrCtrctsInf`` for a future, …). Column names are
-``UPPER_SNAKE_CASE`` of the UP2DATA field name (``TickerSymbol`` → ``TCKR_SYMB`` is *not* used
-here; the consolidated file uses full field names, so ``TICKER_SYMBOL``).
+ticker lives under ``EqtyInf`` for an equity, ``FutrCtrctsInf`` for a future, …). Column names
+follow the library convention — ``pascal_to_upper_snake`` of the BVBG.028 **tag abbreviation** (the
+UP2DATA ``Abreviação``): ``TckrSymb`` → ``TCKR_SYMB``, ``CFICd`` → ``CFICD`` — matching
+``daily_bulletin`` (never the full field name ``TickerSymbol``).
 
 This is a **subset** contract (``bool_full_column=False``): it requires only the columns present on
 **every** instrument regardless of type — the identity/classification block (``RptParams`` +
 ``FinInstrmAttrCmon`` + ``FinInstrmId``, all ``[1..1]``). The many type-specific ``[0..1]`` /
 per-block fields flow through as typed columns but are not required, since an equity record has no
-``EXPIRATION_DATE`` and a future has no ``CORPORATION_NAME``.
+``XPRTN_DT`` and a future has no ``CRPN_NM``.
 
 ⚠️ **Pending live reconcile (issue #68).** The column set and XML paths come from the UP2DATA
 layout; they have **not** yet been confirmed against a real ``IN`` file (the dev clock is
@@ -35,12 +36,12 @@ INSTRUMENTS_FILE = FileContract(
 	"Pesquisa por Pregão Instruments File",
 	"instruments_file",
 	(
-		"REPORT_DATE",
-		"TICKER_SYMBOL",
-		"ASSET",
-		"ASSET_DESCRIPTION",
-		"SEGMENT_NAME",
-		"MARKET_NAME",
+		"RPT_DT",
+		"TCKR_SYMB",
+		"ASST",
+		"ASST_DESC",
+		"SGMT_NM",
+		"MKT_NM",
 		"ISIN",
 	),
 	(),

@@ -21,12 +21,12 @@ vive em `EqtyInf`, o de um futuro em `FutrCtrctsInf`, e assim por diante); cada 
 O layout de colunas vem do mapeamento autoritativo da B3 **`BVBG.028 para UP2DATA`**
 (planilha `InstrumentsConsolidatedFile`, 52 campos) — a própria B3 achata o XML aninhado nele. O
 contrato exige apenas as colunas presentes em **todo** instrumento (o bloco de identificação:
-`REPORT_DATE`, `TICKER_SYMBOL`, `ASSET`, `ASSET_DESCRIPTION`, `SEGMENT_NAME`, `MARKET_NAME`,
+`RPT_DT`, `TCKR_SYMB`, `ASST`, `ASST_DESC`, `SGMT_NM`, `MKT_NM`,
 `ISIN`); os muitos campos específicos de tipo fluem como colunas tipadas, nulas quando não se
 aplicam ao instrumento da linha.
 
-Colunas de data (`EXPIRATION_DATE`, `TRADING_START_DATE`, …) são `datetime.date`; colunas de
-valor/quantidade (`CONTRACT_MULTIPLIER`, `EXERCISE_PRICE`, `MARKET_CAPITALISATION`, …) são
+Colunas de data (`XPRTN_DT`, `TRADG_START_DT`, …) são `datetime.date`; colunas de
+valor/quantidade (`CTRCT_MLTPLR`, `EXRC_PRIC`, `MKT_CPTLSTN`, …) são
 `decimal.Decimal` exato. As demais preservam o texto exato da fonte.
 
 ---
@@ -40,7 +40,7 @@ from datetime import date
 from filings_b3.search_trading_session import InstrumentsFileReader
 
 df = InstrumentsFileReader(date(2025, 1, 2)).read()
-print(df[["TICKER_SYMBOL", "ASSET", "MARKET_NAME", "ISIN"]].head())
+print(df[["TCKR_SYMB", "ASST", "MKT_NM", "ISIN"]].head())
 ```
 
 `date_ref` é **obrigatório** — o endpoint é endereçado por data. Precisa do dia útil anterior?
@@ -51,8 +51,8 @@ Calcule-o e passe explicitamente.
 Uma única leitura traz todos os mercados; filtre pela coluna de classificação:
 
 ```python
-futuros = df[df["MARKET_NAME"] == "FUTURE"]
-print(futuros[["TICKER_SYMBOL", "EXPIRATION_DATE", "CONTRACT_MULTIPLIER"]].head())
+futuros = df[df["MKT_NM"] == "FUTURE"]
+print(futuros[["TCKR_SYMB", "XPRTN_DT", "CTRCT_MLTPLR"]].head())
 ```
 
 ### Manter o artefato bruto (camada _bronze_)
