@@ -61,13 +61,13 @@ def test_read_flattens_records_types_and_stamps_provenance(_patch_download: None
 	"""Each instrument record becomes one typed, provenance-stamped row."""
 	df_out = InstrumentsFileReader(date(2025, 1, 2)).read()
 
-	assert list(df_out["TICKER_SYMBOL"]) == ["PETR4", "DOLF25"]
+	assert list(df_out["TCKR_SYMB"]) == ["PETR4", "DOLF25"]
 	assert list(df_out["ISIN"]) == ["BRPETRACNPR6", "BRBMEFDOL250"]
 	# Scalar report date broadcasts to every row and is a real date.
-	assert list(df_out["REPORT_DATE"]) == [date(2025, 1, 2), date(2025, 1, 2)]
+	assert list(df_out["RPT_DT"]) == [date(2025, 1, 2), date(2025, 1, 2)]
 	# The future's multiplier is exact Decimal; the equity has none.
-	assert df_out.loc[1, "CONTRACT_MULTIPLIER"] == Decimal("50.00025")
-	assert str(df_out.loc[1, "CONTRACT_MULTIPLIER"]) == "50.00025"
+	assert df_out.loc[1, "CTRCT_MLTPLR"] == Decimal("50.00025")
+	assert str(df_out.loc[1, "CTRCT_MLTPLR"]) == "50.00025"
 	# Provenance travels with the data.
 	for str_col in INSTRUMENTS_FILE.PROVENANCE_COLUMNS:
 		assert str_col in df_out.columns

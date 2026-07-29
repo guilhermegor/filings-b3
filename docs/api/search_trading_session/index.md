@@ -16,6 +16,9 @@ A seção `filings_b3.search_trading_session` lê os arquivos por pregão da B3,
   instrumento registrado — ações, futuros, opções, ouro, estratégias e renda fixa — achatando os
   blocos específicos de cada tipo num único _frame_. Inaugura esta seção e é a base da família de 9
   variantes de instrumentos.
+- **[Metadados de layout (BVBG.028 UP2DATA)](instruments_layout_meta.md)** —
+  `InstrumentsLayoutMetaReader`: baixa a planilha autoritativa de layout da B3 e devolve um _snapshot_
+  tipado dos campos declarados (para o _datalake_ e para o job semanal de deriva de contrato).
 
 Cada padrão ganha a sua própria página, com **Descrição** e **Exemplos**. Ao migrar um novo dataset
 desta seção, acrescente uma página nesta pasta e registre-a no `nav:` do `mkdocs.yml` no mesmo

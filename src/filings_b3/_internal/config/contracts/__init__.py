@@ -24,6 +24,7 @@ from filings_b3._internal.config.contracts.daily_bulletin import (
 )
 from filings_b3._internal.config.contracts.search_trading_session import (
 	INSTRUMENTS_FILE,
+	INSTRUMENTS_LAYOUT_META,
 )
 from filings_b3._internal.utils.tabular_reader import (
 	ContractError,
@@ -36,6 +37,7 @@ __all__ = [
 	"BDI_BTB_LENDING_OPEN_POSITIONS",
 	"BDI_STOCKS_SUMMARY",
 	"INSTRUMENTS_FILE",
+	"INSTRUMENTS_LAYOUT_META",
 	"ContractError",
 	"FileContract",
 	"find_file_problems",

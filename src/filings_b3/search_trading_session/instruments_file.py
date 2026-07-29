@@ -22,7 +22,9 @@ file (the dev clock is future-dated, so B3 serves an empty ZIP for reachable day
 1. :data:`_ROW_TAG` — the local name of the repeating instrument-record element. The UP2DATA layout
    gives per-column paths *relative to a record* but not the record tag itself; this is a
    documented single-point-of-change assumption to verify first.
-2. The exact column casing and the multi-alternative paths for every field.
+2. The multi-alternative XML paths for every field (the column **names** are now pinned to the
+   library convention — ``pascal_to_upper_snake`` of the UP2DATA tag abbreviation — so only the
+   paths and the row tag need confirming against real XML).
 
 Both are isolated to the module-level constants below so reconciling is a localized edit.
 """
@@ -54,7 +56,7 @@ _DISTRIBUTION_NAME = "filings-b3"
 _ROW_TAG = "InstrmRcrd"
 
 # File-level scalar: resolved once against the root and broadcast to every row.
-_DICT_SCALARS: dict[str, str] = {"REPORT_DATE": "RptParams/RptDtAndTm/Dt"}
+_DICT_SCALARS: dict[str, str] = {"RPT_DT": "RptParams/RptDtAndTm/Dt"}
 
 # Column → ordered alternative element paths (relative to a record). The first path that resolves
 # for a given record supplies the value; a record of a different instrument type leaves it empty.
@@ -69,7 +71,7 @@ _FIX = "InstrmInf/FxdIncmNonTrdblInf"
 _CMON = "FinInstrmAttrCmon"
 
 _DICT_PATHS: dict[str, tuple[str, ...]] = {
-	"TICKER_SYMBOL": (
+	"TCKR_SYMB": (
 		f"{_EQ}/TckrSymb",
 		f"{_FUT}/TckrSymb",
 		f"{_OSF}/TckrSymb",
@@ -78,19 +80,19 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_STR}/TckrSymb",
 		f"{_FIX}/TckrSymb",
 	),
-	"ASSET": (f"{_CMON}/Asst",),
-	"ASSET_DESCRIPTION": (f"{_CMON}/AsstDesc",),
-	"SEGMENT_NAME": (f"{_CMON}/Sgmt",),
-	"MARKET_NAME": (f"{_CMON}/Mkt",),
-	"SECURITY_CATEGORY_NAME": (
+	"ASST": (f"{_CMON}/Asst",),
+	"ASST_DESC": (f"{_CMON}/AsstDesc",),
+	"SGMT_NM": (f"{_CMON}/Sgmt",),
+	"MKT_NM": (f"{_CMON}/Mkt",),
+	"SCTY_CTGY_NM": (
 		f"{_EQ}/SctyCtgy",
 		f"{_FUT}/SctyCtgy",
 		f"{_OEQ}/SctyCtgy",
 		f"{_STR}/SctyCtgy",
 	),
-	"EXPIRATION_DATE": (f"{_STR}/XprtnDt", f"{_FUT}/XprtnDt", f"{_OSF}/XprtnDt"),
-	"EXPIRATION_CODE": (f"{_STR}/XprtnCd", f"{_FUT}/XprtnCd", f"{_OSF}/XprtnCd"),
-	"TRADING_START_DATE": (
+	"XPRTN_DT": (f"{_STR}/XprtnDt", f"{_FUT}/XprtnDt", f"{_OSF}/XprtnDt"),
+	"XPRTN_CD": (f"{_STR}/XprtnCd", f"{_FUT}/XprtnCd", f"{_OSF}/XprtnCd"),
+	"TRADG_START_DT": (
 		f"{_EQ}/TradgStartDt",
 		f"{_FUT}/TradgStartDt",
 		f"{_OSF}/TradgStartDt",
@@ -99,7 +101,7 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_STR}/TradgStartDt",
 		f"{_FIX}/TradgStartDt",
 	),
-	"TRADING_END_DATE": (
+	"TRADG_END_DT": (
 		f"{_EQ}/TradgEndDt",
 		f"{_FUT}/TradgEndDt",
 		f"{_OSF}/TradgEndDt",
@@ -108,10 +110,10 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_STR}/TradgEndDt",
 		f"{_FIX}/TradgEndDt",
 	),
-	"BASE_CODE": (f"{_FUT}/BaseCd",),
-	"CONVERSION_CRITERIA_NAME": (f"{_FUT}/ConvsCrit",),
-	"MATURITY_DATE_TARGET_POINT": (f"{_FUT}/MtrtyDtTrgtPt",),
-	"REQUIRED_CONVERSION_INDICATOR": (f"{_FUT}/ReqrdConvsInd",),
+	"BASE_CD": (f"{_FUT}/BaseCd",),
+	"CONVS_CRIT_NM": (f"{_FUT}/ConvsCrit",),
+	"MTRTY_DT_TRGT_PT": (f"{_FUT}/MtrtyDtTrgtPt",),
+	"REQRD_CONVS_IND": (f"{_FUT}/ReqrdConvsInd",),
 	"ISIN": (
 		f"{_EQ}/ISIN",
 		f"{_FUT}/ISIN",
@@ -121,7 +123,7 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_STR}/ISIN",
 		f"{_FIX}/ISIN",
 	),
-	"CFI_CODE": (
+	"CFICD": (
 		f"{_EQ}/CFICd",
 		f"{_FUT}/CFICd",
 		f"{_OSF}/CFICd",
@@ -129,17 +131,17 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_GLD}/CFICd",
 		f"{_STR}/CFICd",
 	),
-	"DELIVERY_NOTICE_START_DATE": (f"{_FUT}/DlvryNtceStartDt",),
-	"DELIVERY_NOTICE_END_DATE": (f"{_FUT}/DlvryNtceEndDt",),
-	"OPTION_TYPE": (f"{_OEQ}/OptnTp", f"{_OSF}/OptnTp"),
-	"CONTRACT_MULTIPLIER": (
+	"DLVRY_NTCE_START_DT": (f"{_FUT}/DlvryNtceStartDt",),
+	"DLVRY_NTCE_END_DT": (f"{_FUT}/DlvryNtceEndDt",),
+	"OPTN_TP": (f"{_OEQ}/OptnTp", f"{_OSF}/OptnTp"),
+	"CTRCT_MLTPLR": (
 		f"{_FUT}/CtrctMltplr",
 		f"{_OSF}/CtrctMltplr",
 		f"{_GLD}/CtrctMltplr",
 		f"{_STR}/SttlmIndMltplr",
 	),
-	"ASSET_QUOTATION_QUANTITY": (f"{_FUT}/AsstQtnQty", f"{_OSF}/AsstQtnQty", f"{_GLD}/AsstQtnQty"),
-	"ALLOCATION_ROUND_LOT": (
+	"ASST_QTN_QTY": (f"{_FUT}/AsstQtnQty", f"{_OSF}/AsstQtnQty", f"{_GLD}/AsstQtnQty"),
+	"ALLCN_RND_LOT": (
 		f"{_EQ}/AllcnRndLot",
 		f"{_FUT}/AllcnRndLot",
 		f"{_OSF}/AllcnRndLot",
@@ -147,7 +149,7 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_GLD}/AllcnRndLot",
 		f"{_STR}/AllcnRndLot",
 	),
-	"TRADING_CURRENCY": (
+	"TRADG_CCY": (
 		f"{_EQ}/TradgCcy",
 		f"{_FUT}/TradgCcy",
 		f"{_OSF}/TradgCcy",
@@ -155,54 +157,54 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 		f"{_GLD}/TradgCcy",
 		f"{_STR}/TradgCcy",
 	),
-	"DELIVERY_TYPE_NAME": (f"{_OEQ}/DlvryTp", f"{_FUT}/DlvryTp"),
-	"WITHDRAWAL_DAYS": (f"{_OSF}/WdrwlDays", f"{_FUT}/WdrwlDays"),
-	"WORKING_DAYS": (f"{_OSF}/WrkgDays", f"{_FUT}/WrkgDays"),
-	"CALENDAR_DAYS": (f"{_OSF}/ClnrDays", f"{_FUT}/ClnrDays"),
-	"ROLLOVER_BASE_PRICE_NAME": (f"{_STR}/RlvrBasePricCd",),
-	"OPENING_FUTURE_POSITION_DAY": (f"{_STR}/OpngFutrPosDay",),
-	"SIDE_TYPE_CODE_1": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
-	"UNDERLYING_TICKER_SYMBOL_1": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
-	"SIDE_TYPE_CODE_2": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
-	"UNDERLYING_TICKER_SYMBOL_2": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
-	"PURE_GOLD_WEIGHT": (f"{_GLD}/PureGoldWght", f"{_OSF}/PureGoldWght", f"{_FUT}/PureGoldWght"),
-	"EXERCISE_PRICE": (f"{_OEQ}/ExrcPric", f"{_OSF}/ExrcPric"),
-	"OPTION_STYLE": (f"{_OEQ}/OptnStyle", f"{_OSF}/ExrcStyle"),
-	"VALUE_TYPE_NAME": (f"{_FUT}/ValTpCd", f"{_STR}/ValTpCd"),
-	"PREMIUM_UPFRONT_INDICATOR": (f"{_OSF}/PrmUpfrntInd", f"{_OEQ}/PrmUpfrntInd"),
-	"OPENING_POSITION_LIMIT_DATE": (f"{_OSF}/OpngPosLmtDt",),
-	"DISTRIBUTION_IDENTIFICATION": (f"{_OEQ}/DstrbtnId", f"{_EQ}/DstrbtnId"),
-	"PRICE_FACTOR": (f"{_EQ}/PricFctr", f"{_OEQ}/PricFctr"),
-	"DAYS_TO_SETTLEMENT": (f"{_OEQ}/DaysToSttlm", f"{_EQ}/DaysToSttlm"),
-	"SERIES_TYPE_NAME": (f"{_OEQ}/SrsTp",),
-	"PROTECTION_FLAG": (f"{_OEQ}/PrtcnFlg",),
-	"AUTOMATIC_EXERCISE_INDICATOR": (f"{_OEQ}/AutomtcExrcInd",),
-	"SPECIFICATION_CODE": (f"{_EQ}/SpcfctnCd",),
-	"CORPORATION_NAME": (f"{_EQ}/CrpnNm",),
-	"CORPORATE_ACTION_START_DATE": (f"{_EQ}/CorpActnStartDt",),
-	"CUSTODY_TREATMENT_TYPE_NAME": (f"{_EQ}/CtdyTrtmntTp",),
-	"MARKET_CAPITALISATION": (f"{_EQ}/MktCptlstn",),
-	"CORPORATE_GOVERNANCE_LEVEL_NAME": (f"{_EQ}/GovnInd",),
+	"DLVRY_TP_NM": (f"{_OEQ}/DlvryTp", f"{_FUT}/DlvryTp"),
+	"WDRWL_DAYS": (f"{_OSF}/WdrwlDays", f"{_FUT}/WdrwlDays"),
+	"WRKG_DAYS": (f"{_OSF}/WrkgDays", f"{_FUT}/WrkgDays"),
+	"CLNR_DAYS": (f"{_OSF}/ClnrDays", f"{_FUT}/ClnrDays"),
+	"RLVR_BASE_PRIC_NM": (f"{_STR}/RlvrBasePricCd",),
+	"OPNG_FUTR_POS_DAY": (f"{_STR}/OpngFutrPosDay",),
+	"SD_TP_CD1": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
+	"UNDRLYG_TCKR_SYMB1": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
+	"SD_TP_CD2": (f"{_STR}/StrtgyLegList/LegId/SdTpCd",),
+	"UNDRLYG_TCKR_SYMB2": (f"{_STR}/StrtgyLegList/LegId/UndrlygInstrmId",),
+	"PURE_GOLD_WGHT": (f"{_GLD}/PureGoldWght", f"{_OSF}/PureGoldWght", f"{_FUT}/PureGoldWght"),
+	"EXRC_PRIC": (f"{_OEQ}/ExrcPric", f"{_OSF}/ExrcPric"),
+	"OPTN_STYLE": (f"{_OEQ}/OptnStyle", f"{_OSF}/ExrcStyle"),
+	"VAL_TP_NM": (f"{_FUT}/ValTpCd", f"{_STR}/ValTpCd"),
+	"PRM_UPFRNT_IND": (f"{_OSF}/PrmUpfrntInd", f"{_OEQ}/PrmUpfrntInd"),
+	"OPNG_POS_LMT_DT": (f"{_OSF}/OpngPosLmtDt",),
+	"DSTRBTN_ID": (f"{_OEQ}/DstrbtnId", f"{_EQ}/DstrbtnId"),
+	"PRIC_FCTR": (f"{_EQ}/PricFctr", f"{_OEQ}/PricFctr"),
+	"DAYS_TO_STTLM": (f"{_OEQ}/DaysToSttlm", f"{_EQ}/DaysToSttlm"),
+	"SRS_TP_NM": (f"{_OEQ}/SrsTp",),
+	"PRTCN_FLG": (f"{_OEQ}/PrtcnFlg",),
+	"AUTOMTC_EXRC_IND": (f"{_OEQ}/AutomtcExrcInd",),
+	"SPCFCTN_CD": (f"{_EQ}/SpcfctnCd",),
+	"CRPN_NM": (f"{_EQ}/CrpnNm",),
+	"CORP_ACTN_START_DT": (f"{_EQ}/CorpActnStartDt",),
+	"CTDY_TRTMNT_TP_NM": (f"{_EQ}/CtdyTrtmntTp",),
+	"MKT_CPTLSTN": (f"{_EQ}/MktCptlstn",),
+	"CORP_GOVN_LVL_NM": (f"{_EQ}/GovnInd",),
 }
 
 # Dates → datetime.date; money/quantity/multiplier → exact Decimal (never binary float). Every
 # other column stays source text (str) for fidelity — the source's exact bytes, typed downstream.
 _LIST_DATE_COLS: tuple[str, ...] = (
-	"REPORT_DATE",
-	"EXPIRATION_DATE",
-	"TRADING_START_DATE",
-	"TRADING_END_DATE",
-	"DELIVERY_NOTICE_START_DATE",
-	"DELIVERY_NOTICE_END_DATE",
-	"OPENING_POSITION_LIMIT_DATE",
-	"CORPORATE_ACTION_START_DATE",
+	"RPT_DT",
+	"XPRTN_DT",
+	"TRADG_START_DT",
+	"TRADG_END_DT",
+	"DLVRY_NTCE_START_DT",
+	"DLVRY_NTCE_END_DT",
+	"OPNG_POS_LMT_DT",
+	"CORP_ACTN_START_DT",
 )
 _LIST_DECIMAL_COLS: tuple[str, ...] = (
-	"CONTRACT_MULTIPLIER",
-	"ASSET_QUOTATION_QUANTITY",
-	"PURE_GOLD_WEIGHT",
-	"EXERCISE_PRICE",
-	"MARKET_CAPITALISATION",
+	"CTRCT_MLTPLR",
+	"ASST_QTN_QTY",
+	"PURE_GOLD_WGHT",
+	"EXRC_PRIC",
+	"MKT_CPTLSTN",
 )
 # Text for every non-date, non-decimal column (fidelity: keep the source's exact string).
 _DICT_DTYPES: dict[str, str] = {

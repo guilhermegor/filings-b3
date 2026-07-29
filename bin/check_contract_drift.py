@@ -1,197 +1,275 @@
-"""Weekly, non-gating drift check: does each shipped contract still match its live source?
+#!/usr/bin/env python
+"""Weekly, non-blocking contract-drift detector — B3's UP2DATA layout as the oracle.
 
-The second half of the oracle discipline (`config/CLAUDE.md` → "Pin every contract to a
-source-published oracle"). A pinned fixture proves the contract matched **the day it was written**;
-only re-fetching the live source can catch the source changing it *afterwards*. This driver does
-exactly that — and **never fails**. It compares each contract's columns against the current header
-and reports drift; the surrounding workflow turns a report into an *issue*, never a red check.
+B3 can change the BVBG.028 instruments layout *after* we have shipped
+:data:`~filings_b3._internal.config.contracts.INSTRUMENTS_FILE` and the reader's column→XML-path
+map. Nothing at PR time can see that: the reader's tests prove it matched the layout the day they
+were written, but only a job that fetches B3's published layout again can notice a change made
+since. This script downloads the authoritative ``BVBG.028 para UP2DATA`` spreadsheet (via
+:class:`~filings_b3.search_trading_session.InstrumentsLayoutMetaReader`), compares the columns B3
+**declares** against the columns the instruments reader **maps**, and — on any divergence — opens
+(or updates) a **single tracking issue**. It never fails the build: a B3 outage and a real drift
+would be indistinguishable in a red check, and a red check must never gate a PR or a release. See
+``.github/workflows/contract-drift.yaml``.
 
-Why never fail: a network test contradicts the socket-blocking `conftest` guard, "the source is
-down" and "our contract is wrong" are indistinguishable as a failed check, and an external host on
-a gating path has silently skipped a release before. So this always exits 0 — it is a *reporter*,
-not a gate. It **self-skips to success** when `config/contract_oracles.yaml` lists no sources.
+The comparison is **symmetric**, and both directions are real signals:
 
-Run online only (it is wired into the scheduled `contract_drift.yaml` workflow, never into PR/push
-CI). Reads the registry, re-fetches each source's header through the one `http_downloader` seam,
-writes a Markdown report to ``contract_drift_report.md`` (empty when there is no drift), and prints
-a summary.
+* a mapped column **gone** from B3's layout → the reader now produces a silently-null column;
+* a layout column the reader **does not map** → B3 added a field we should start reading.
+
+Machine/maintainer-facing surface — English, like every other ``bin/`` script here.
 """
 
-import pathlib
+from __future__ import annotations
+
+import json
+import os
 import sys
-import tempfile
+from typing import Any
+import urllib.request
+
+from filings_b3._internal.config.contracts import INSTRUMENTS_FILE
+from filings_b3._internal.utils.retry import RetryPolicy
+from filings_b3.search_trading_session import (
+	InstrumentsLayoutMetaReader,
+	instruments_file as _inst,
+)
 
 
-# The driver imports the project's source (config.contracts, utils.*); make ``src`` importable when
-# invoked as ``python bin/check_contract_drift.py`` from the project root (as the workflow does).
-sys.path.insert(0, "src")
+# GitHub API host — host-only so no fetchable URL literal trips the check-urls hook; paths are
+# concatenated at the call site.
+_GH_API = "https://api.github.com"
 
-import yaml  # noqa: E402 — after the sys.path bootstrap above
+# The single tracking issue is found again each run by this label plus a hidden body marker, so the
+# job updates one issue instead of opening a new one every week.
+_ISSUE_LABEL = "contract-drift"
+_ISSUE_MARKER = "<!-- contract-drift-bot -->"
+_ISSUE_TITLE = "Deriva de layout detectada (UP2DATA x instruments reader)"
 
-from config import contracts as contracts_module  # noqa: E402
-from utils.http_downloader import download_file  # noqa: E402
-from utils.tabular_reader import FileContract  # noqa: E402
-
-
-_REGISTRY_PATH = pathlib.Path("src/config/contract_oracles.yaml")
-_REPORT_PATH = pathlib.Path("contract_drift_report.md")
-
-
-def load_registry() -> dict:
-    """Return the ``oracles`` mapping from the registry file (empty when unset/absent).
-
-    Returns
-    -------
-    dict
-        ``{source_key: {"url", "sep", "encoding"}}`` — empty when no sources are configured.
-    """
-    if not _REGISTRY_PATH.exists():
-        return {}
-    dict_doc = yaml.safe_load(_REGISTRY_PATH.read_text(encoding="utf-8")) or {}
-    return dict_doc.get("oracles") or {}
+# Best-effort weekly probe: fail fast instead of burning the patient production backoff. A B3
+# outage is an EXPECTED skip this week, not a transient worth retrying for ~24 s.
+_DRIFT_RETRY_POLICY: RetryPolicy = RetryPolicy(int_max_attempts=1)
 
 
-def contracts_by_source_key() -> dict:
-    """Index every ``FileContract`` declared in ``config.contracts`` by its ``str_source_key``.
-
-    Returns
-    -------
-    dict
-        ``{str_source_key: FileContract}`` for each contract instance re-exported by the package.
-    """
-    dict_index = {}
-    for str_name in dir(contracts_module):
-        obj = getattr(contracts_module, str_name)
-        if isinstance(obj, FileContract):
-            dict_index[obj.str_source_key] = obj
-    return dict_index
+# ---------------------------------------------------------------------------------------------
+# Pure oracle (no network) — unit-tested exhaustively.
+# ---------------------------------------------------------------------------------------------
 
 
-def live_header(dict_entry: dict) -> tuple[str, ...]:
-    """Download the source artifact and return its current header columns.
+def layout_drift(
+	str_label: str, frozenset_mapped: frozenset[str], frozenset_layout: frozenset[str]
+) -> list[str]:
+	"""Compare the reader's mapped columns against B3's declared layout columns, both ways.
 
-    Parameters
-    ----------
-    dict_entry : dict
-        A registry entry with ``url`` and optional ``sep`` / ``encoding``.
+	Parameters
+	----------
+	str_label : str
+		Human-readable dataset label, prefixed onto each problem for the issue body.
+	frozenset_mapped : frozenset of str
+		The canonical column names the reader maps (its scalar + path keys).
+	frozenset_layout : frozenset of str
+		The canonical column names B3's UP2DATA layout declares now.
 
-    Returns
-    -------
-    tuple of str
-        The live header's columns, stripped.
-    """
-    str_sep = dict_entry.get("sep", ";")
-    str_encoding = dict_entry.get("encoding", "utf-8-sig")
-    with tempfile.TemporaryDirectory() as str_tmp:
-        path_art = download_file(dict_entry["url"], pathlib.Path(str_tmp) / "artifact")
-        with path_art.open(encoding=str_encoding) as fh:
-            for str_line in fh:
-                if str_line.strip():
-                    return tuple(cell.strip() for cell in str_line.rstrip("\n").split(str_sep))
-    return ()
-
-
-def drift_for_source(cls_contract: FileContract, dict_entry: dict) -> tuple[list[str], list[str]]:
-    """Return ``(drift_lines, note_lines)`` for one source — notes are logged, never reported.
-
-    The two directions are **not** symmetric:
-
-    - **A required column vanished from the source is ALWAYS drift** — the read would raise.
-    - **"the source has a column the contract doesn't list" is drift ONLY when the contract
-      claims completeness** (``bool_full_column``). ``tuple_required`` means "must contain at
-      least these", so a deliberate *subset* contract (require the keys, let the rest flow
-      through) legitimately omits most columns; flagging them reports every non-required column
-      as a finding. A job that cries wolf on its first run is worse than no job.
-
-    A fetch failure is **not** drift either (the source may be down, or the artifact for the
-    current period may not be published yet), so it becomes a *note* — logged for the operator,
-    kept out of the report that opens an issue.
-
-    Parameters
-    ----------
-    cls_contract : FileContract
-        The shipped contract to check.
-    dict_entry : dict
-        The source's registry entry.
-
-    Returns
-    -------
-    tuple of (list of str, list of str)
-        ``(drift_lines, note_lines)`` — drift lines open/update the issue; note lines only log.
-    """
-    try:
-        tuple_live = live_header(dict_entry)
-    except OSError as cls_err:
-        return [], [f"could not fetch {dict_entry.get('url')}: {cls_err} (not treated as drift)"]
-    set_live = set(tuple_live)
-    set_contract = set(cls_contract.tuple_required)
-    list_lines: list[str] = []
-    # Load-bearing direction — always checked: the source dropped something we require.
-    for str_removed in sorted(set_contract - set_live):
-        list_lines.append(f"➖ contract requires column the source dropped: `{str_removed}`")
-    # Completeness-gated direction — only meaningful for a full-header (pinned-oracle) contract.
-    if cls_contract.bool_full_column:
-        for str_added in sorted(set_live - set_contract):
-            list_lines.append(f"➕ source added column not in the full-column contract: `{str_added}`")
-    return list_lines, []
+	Returns
+	-------
+	list of str
+		One message per drift found; empty when the two sets are equal.
+	"""
+	list_problems: list[str] = []
+	for str_col in sorted(frozenset_mapped - frozenset_layout):
+		list_problems.append(
+			f"{str_label}: reader maps {str_col!r}, gone from B3's layout "
+			f"(the reader now yields a silently-null column — B3 removed or renamed a field?)"
+		)
+	for str_col in sorted(frozenset_layout - frozenset_mapped):
+		list_problems.append(
+			f"{str_label}: B3's layout declares {str_col!r}, which the reader does not map "
+			f"(B3 added a field — add its column->path mapping?)"
+		)
+	return list_problems
 
 
-def build_report(dict_registry: dict, dict_contracts: dict) -> tuple[str, list[str]]:
-    """Assemble the drift report and the log-only notes across all configured sources.
+def mapped_columns() -> frozenset[str]:
+	"""Return the canonical column names the instruments reader maps (scalars + path columns).
 
-    Parameters
-    ----------
-    dict_registry : dict
-        The ``oracles`` mapping.
-    dict_contracts : dict
-        ``{source_key: FileContract}``.
+	Returns
+	-------
+	frozenset of str
+		The reader's full mapped column set — the drift oracle's "what we read" side.
+	"""
+	return frozenset(_inst._DICT_SCALARS) | frozenset(_inst._DICT_PATHS)
 
-    Returns
-    -------
-    tuple of (str, list of str)
-        The Markdown report body (``""`` when every contract still matches its source) and the
-        note lines, which are logged but deliberately never open an issue.
-    """
-    list_sections: list[str] = []
-    list_notes: list[str] = []
-    for str_key, dict_entry in dict_registry.items():
-        cls_contract = dict_contracts.get(str_key)
-        if cls_contract is None:
-            list_sections.append(
-                f"### `{str_key}`\n\n⚠️ no FileContract with this source_key in config/contracts/."
-            )
-            continue
-        list_lines, list_entry_notes = drift_for_source(cls_contract, dict_entry)
-        list_notes.extend(f"{str_key}: {note}" for note in list_entry_notes)
-        if list_lines:
-            list_sections.append(f"### `{str_key}`\n\n" + "\n".join(f"- {ln}" for ln in list_lines))
-    return "\n\n".join(list_sections), list_notes
+
+# ---------------------------------------------------------------------------------------------
+# Online check — one download of the layout asset (network); tolerant of a B3 outage.
+# ---------------------------------------------------------------------------------------------
+
+
+def fetch_layout_columns(int_timeout_s: int = 60) -> frozenset[str] | None:  # noqa: ARG001
+	"""Download B3's UP2DATA layout and return the canonical column set it declares.
+
+	Parameters
+	----------
+	int_timeout_s : int, optional
+		Reserved for parity with the readers' timeout knob; the layout reader uses the download
+		seam's own timeout.
+
+	Returns
+	-------
+	frozenset of str or None
+		The layout's ``CANONICAL_COLUMN`` values, or ``None`` when the asset is unavailable
+		(a B3 outage is not drift — skip this week).
+	"""
+	try:
+		df_layout = InstrumentsLayoutMetaReader(cls_retry_policy=_DRIFT_RETRY_POLICY).read()
+	except OSError:
+		return None
+	return frozenset(df_layout["CANONICAL_COLUMN"].astype(str))
+
+
+def collect_drift(int_timeout_s: int = 60) -> list[str]:
+	"""Run the oracle over the instruments layout and return every drift message found.
+
+	Parameters
+	----------
+	int_timeout_s : int, optional
+		Socket timeout forwarded to the layout read, by default 60.
+
+	Returns
+	-------
+	list of str
+		Every drift message (empty when the layout matches the reader, or the layout is
+		unavailable).
+	"""
+	frozenset_layout = fetch_layout_columns(int_timeout_s)
+	if frozenset_layout is None:
+		print("layout asset unavailable — skipping this run (not drift)", file=sys.stderr)
+		return []
+	return layout_drift(INSTRUMENTS_FILE.str_name, mapped_columns(), frozenset_layout)
+
+
+# ---------------------------------------------------------------------------------------------
+# Issue upsert (network) — one tracking issue, found again by label + marker.
+# ---------------------------------------------------------------------------------------------
+
+
+def build_issue_body(list_problems: list[str]) -> str:
+	"""Render the drift messages into the tracking issue's body (with the dedupe marker).
+
+	Parameters
+	----------
+	list_problems : list of str
+		The drift messages.
+
+	Returns
+	-------
+	str
+		Markdown body carrying the hidden marker used to find this issue again.
+	"""
+	str_lines = "\n".join(f"- {str_problem}" for str_problem in list_problems)
+	return (
+		f"{_ISSUE_MARKER}\n\n"
+		f"O job semanal de deriva encontrou **{len(list_problems)}** divergencia(s) entre o "
+		f"layout que a B3 publica hoje (planilha UP2DATA) e o que o reader de instrumentos mapeia."
+		f"\n\n{str_lines}\n\n"
+		f"Atualize o `INSTRUMENTS_FILE` / `_DICT_PATHS` do reader (nomes canonicos = "
+		f"`pascal_to_upper_snake` da abreviacao BVBG.028) e feche esta issue. O job a reabre se a "
+		f"deriva persistir.\n"
+	)
+
+
+def _api(str_method: str, str_url: str, dict_body: dict | None = None) -> Any:  # noqa: ANN401
+	"""Call the GitHub API with the workflow token and decode the JSON reply.
+
+	Parameters
+	----------
+	str_method : str
+		HTTP method.
+	str_url : str
+		Absolute API URL.
+	dict_body : dict, optional
+		JSON payload, when the method takes one.
+
+	Returns
+	-------
+	Any
+		The decoded JSON (an object or an array, per the endpoint).
+	"""
+	bytes_body = None if dict_body is None else json.dumps(dict_body).encode()
+	cls_request = urllib.request.Request(str_url, data=bytes_body, method=str_method)  # noqa: S310
+	cls_request.add_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
+	cls_request.add_header("Accept", "application/vnd.github+json")
+	cls_request.add_header("Content-Type", "application/json")
+	with urllib.request.urlopen(cls_request) as cls_response:  # noqa: S310
+		return json.loads(cls_response.read() or "null")
+
+
+def find_open_drift_issue(list_issues: list[dict]) -> int | None:
+	"""Return the number of the existing open drift issue, if any.
+
+	Parameters
+	----------
+	list_issues : list of dict
+		Open issues carrying the drift label, each ``{"number": int, "body": str, ...}``.
+
+	Returns
+	-------
+	int or None
+		The first issue whose body carries the marker, or ``None``.
+	"""
+	for dict_issue in list_issues:
+		if _ISSUE_MARKER in (dict_issue.get("body") or ""):
+			return dict_issue["number"]
+	return None
+
+
+def upsert_issue(str_api: str, list_problems: list[str]) -> None:
+	"""Open the tracking issue, or update it in place if it already exists.
+
+	Parameters
+	----------
+	str_api : str
+		The ``.../repos/{owner}/{name}`` API base.
+	list_problems : list of str
+		The drift messages to report.
+	"""
+	str_body = build_issue_body(list_problems)
+	list_open = _api("GET", f"{str_api}/issues?state=open&labels={_ISSUE_LABEL}&per_page=100")
+	int_existing = find_open_drift_issue(list_open)
+	if int_existing is not None:
+		_api("PATCH", f"{str_api}/issues/{int_existing}", {"body": str_body})
+		print(f"updated drift issue #{int_existing}", file=sys.stderr)
+		return
+	_api(
+		"POST",
+		f"{str_api}/issues",
+		{"title": _ISSUE_TITLE, "body": str_body, "labels": [_ISSUE_LABEL]},
+	)
+	print("opened a new drift issue", file=sys.stderr)
 
 
 def main() -> int:
-    """Run the drift check and write the report. Always returns 0 (reporter, never a gate).
+	"""Run the sweep; open/update the tracking issue on drift. Always exits 0 (non-blocking).
 
-    Returns
-    -------
-    int
-        Always 0 — drift is reported via the written file, never via a non-zero exit.
-    """
-    dict_registry = load_registry()
-    if not dict_registry:
-        print("No oracles configured in config/contract_oracles.yaml — skipping drift check.")
-        _REPORT_PATH.write_text("", encoding="utf-8")
-        return 0
-    str_report, list_notes = build_report(dict_registry, contracts_by_source_key())
-    _REPORT_PATH.write_text(str_report, encoding="utf-8")
-    for str_note in list_notes:
-        print(f"note: {str_note}")
-    if str_report:
-        print("Contract drift detected:\n")
-        print(str_report)
-    else:
-        print("No contract drift — every contract still matches its source.")
-    return 0
+	Returns
+	-------
+	int
+		Always ``0`` — drift is reported as an issue, never as a failed check.
+	"""
+	list_problems = collect_drift()
+	if not list_problems:
+		print("no layout drift detected")
+		return 0
+
+	print(f"layout drift detected: {len(list_problems)} problem(s)")
+	for str_problem in list_problems:
+		print(f"  - {str_problem}")
+
+	str_repo = os.environ.get("GITHUB_REPOSITORY")
+	if str_repo:
+		upsert_issue(f"{_GH_API}/repos/{str_repo}", list_problems)
+	return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+	raise SystemExit(main())
