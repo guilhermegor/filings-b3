@@ -14,7 +14,7 @@
         <link rel="prev" href="../">
       
       
-        <link rel="next" href="../../../faq/">
+        <link rel="next" href="../instruments_layout_meta/">
       
       
         
@@ -763,6 +763,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../instruments_layout_meta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadados de layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -985,11 +1013,11 @@ vive em <code>EqtyInf</code>, o de um futuro em <code>FutrCtrctsInf</code>, e as
 <p>O layout de colunas vem do mapeamento autoritativo da B3 <strong><code>BVBG.028 para UP2DATA</code></strong>
 (planilha <code>InstrumentsConsolidatedFile</code>, 52 campos) — a própria B3 achata o XML aninhado nele. O
 contrato exige apenas as colunas presentes em <strong>todo</strong> instrumento (o bloco de identificação:
-<code>REPORT_DATE</code>, <code>TICKER_SYMBOL</code>, <code>ASSET</code>, <code>ASSET_DESCRIPTION</code>, <code>SEGMENT_NAME</code>, <code>MARKET_NAME</code>,
+<code>RPT_DT</code>, <code>TCKR_SYMB</code>, <code>ASST</code>, <code>ASST_DESC</code>, <code>SGMT_NM</code>, <code>MKT_NM</code>,
 <code>ISIN</code>); os muitos campos específicos de tipo fluem como colunas tipadas, nulas quando não se
 aplicam ao instrumento da linha.</p>
-<p>Colunas de data (<code>EXPIRATION_DATE</code>, <code>TRADING_START_DATE</code>, …) são <code>datetime.date</code>; colunas de
-valor/quantidade (<code>CONTRACT_MULTIPLIER</code>, <code>EXERCISE_PRICE</code>, <code>MARKET_CAPITALISATION</code>, …) são
+<p>Colunas de data (<code>XPRTN_DT</code>, <code>TRADG_START_DT</code>, …) são <code>datetime.date</code>; colunas de
+valor/quantidade (<code>CTRCT_MLTPLR</code>, <code>EXRC_PRIC</code>, <code>MKT_CPTLSTN</code>, …) são
 <code>decimal.Decimal</code> exato. As demais preservam o texto exato da fonte.</p>
 <hr />
 <h2 id="exemplos">Exemplos<a class="headerlink" href="#exemplos" title="Permanent link">&para;</a></h2>
@@ -998,14 +1026,14 @@ valor/quantidade (<code>CONTRACT_MULTIPLIER</code>, <code>EXERCISE_PRICE</code>,
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">filings_b3.search_trading_session</span><span class="w"> </span><span class="kn">import</span> <span class="n">InstrumentsFileReader</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">InstrumentsFileReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;TICKER_SYMBOL&quot;</span><span class="p">,</span> <span class="s2">&quot;ASSET&quot;</span><span class="p">,</span> <span class="s2">&quot;MARKET_NAME&quot;</span><span class="p">,</span> <span class="s2">&quot;ISIN&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;ASST&quot;</span><span class="p">,</span> <span class="s2">&quot;MKT_NM&quot;</span><span class="p">,</span> <span class="s2">&quot;ISIN&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </span></code></pre></div>
 <p><code>date_ref</code> é <strong>obrigatório</strong> — o endpoint é endereçado por data. Precisa do dia útil anterior?
 Calcule-o e passe explicitamente.</p>
 <h3 id="filtrar-por-mercado">Filtrar por mercado<a class="headerlink" href="#filtrar-por-mercado" title="Permanent link">&para;</a></h3>
 <p>Uma única leitura traz todos os mercados; filtre pela coluna de classificação:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">futuros</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;MARKET_NAME&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;FUTURE&quot;</span><span class="p">]</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">futuros</span><span class="p">[[</span><span class="s2">&quot;TICKER_SYMBOL&quot;</span><span class="p">,</span> <span class="s2">&quot;EXPIRATION_DATE&quot;</span><span class="p">,</span> <span class="s2">&quot;CONTRACT_MULTIPLIER&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">futuros</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;MKT_NM&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;FUTURE&quot;</span><span class="p">]</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">futuros</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;XPRTN_DT&quot;</span><span class="p">,</span> <span class="s2">&quot;CTRCT_MLTPLR&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </span></code></pre></div>
 <h3 id="manter-o-artefato-bruto-camada-bronze">Manter o artefato bruto (camada <em>bronze</em>)<a class="headerlink" href="#manter-o-artefato-bruto-camada-bronze" title="Permanent link">&para;</a></h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
