@@ -128,3 +128,23 @@ def test_read_xml_keeps_decimal_columns_exact(tmp_path: Path) -> None:
 	assert df_out.loc[1, "CONTRACT_MULTIPLIER"] == Decimal("50.00025")
 	# The string form proves the exact scale survived, which a lossy binary float would not.
 	assert str(df_out.loc[1, "CONTRACT_MULTIPLIER"]) == "50.00025"
+
+
+def test_read_xml_star_wildcard_matches_any_sub_block(tmp_path: Path) -> None:
+	"""A ``*`` path segment matches any single child — one path covers every sub-block type.
+
+	The two records place ``TckrSymb`` under different sub-blocks (``EqtyInf`` vs
+	``FutrCtrctsInf``); ``InstrmInf/*/TckrSymb`` resolves both without enumerating either, which is
+	how the instruments reader covers all 17 BVBG sub-block types with one path.
+	"""
+	cls_contract = FileContract("Test", "test", ("TICKER_SYMBOL",), ())
+
+	df_out = read_xml(
+		_write(tmp_path),
+		"InstrmRcrd",
+		{"TICKER_SYMBOL": ("InstrmInf/*/TckrSymb",)},
+		{"TICKER_SYMBOL": "str"},
+		cls_contract,
+	)
+
+	assert list(df_out["TICKER_SYMBOL"]) == ["PETR4", "DOLF25"]
