@@ -23,6 +23,23 @@ contrato e com proveniência — valores monetários como `Decimal` exato, nunca
 - [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/stocks_summary/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
 - [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/btb_lending_open_positions/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
 
+### 🗂️ Readers da Pesquisa por Pregão
+
+O arquivo de instrumentos do pregão (`IN{aammdd}.zip`, BVBG.028.02) é **um download lido de nove
+formas**: cada registro aninha os seus campos sob exatamente um de 20 blocos `InstrmInf`.
+
+- [`InstrumentsFileReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file/) — todos os tipos sob o layout de 52 colunas publicado pela B3.
+- **Por tipo**, cada um com a lista *completa* de campos do seu bloco:
+  [`InstrumentsFileEqtyReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_eqty/) (ações),
+  [`InstrumentsFileOptnOnEqtsReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_optn_on_eqts/) (opções sobre ações),
+  [`InstrumentsFileOptnOnSpotAndFuturesReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_optn_on_spot_and_futures/) (opções sobre disponível e futuros),
+  [`InstrumentsFileExrcEqtsReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_exrc_eqts/) (exercício de opções),
+  [`InstrumentsFileEqtyFwdReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_eqty_fwd/) (termo de ações),
+  [`InstrumentsFileFxdIncmReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_fxd_incm/) (renda fixa),
+  [`InstrumentsFileAdrReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_adr/) (ADRs) e
+  [`InstrumentsFileBtcReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_btc/) (BTC).
+- [`InstrumentsLayoutMetaReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_layout_meta/) — _snapshot_ tipado do layout autoritativo da B3, para o _datalake_ e para o job semanal de deriva de contrato.
+
 ### 🔒 Fidelidade por construção
 - **Tipagem explícita** — toda coluna tipada na carga, nunca a inferência do pandas.
 - **Decimais exatos** — dinheiro e qualquer valor cuja parte fracionária importa é `decimal.Decimal`, nunca um `float` binário.

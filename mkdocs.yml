@@ -14,6 +14,14 @@ nav:
       - Pesquisa por Pregão:
           - Visão geral: api/search_trading_session/index.md
           - Arquivo de instrumentos: api/search_trading_session/instruments_file.md
+          - "Instrumentos — Ações": api/search_trading_session/instruments_file_eqty.md
+          - "Instrumentos — Opções sobre ações": api/search_trading_session/instruments_file_optn_on_eqts.md
+          - "Instrumentos — Opções sobre disponível e futuros": api/search_trading_session/instruments_file_optn_on_spot_and_futures.md
+          - "Instrumentos — Exercício de opções sobre ações": api/search_trading_session/instruments_file_exrc_eqts.md
+          - "Instrumentos — Termo de ações": api/search_trading_session/instruments_file_eqty_fwd.md
+          - "Instrumentos — Renda fixa": api/search_trading_session/instruments_file_fxd_incm.md
+          - "Instrumentos — ADRs": api/search_trading_session/instruments_file_adr.md
+          - "Instrumentos — BTC": api/search_trading_session/instruments_file_btc.md
           - Metadados de layout: api/search_trading_session/instruments_layout_meta.md
   - FAQ: faq.md
   - Contribuindo: contributing.md

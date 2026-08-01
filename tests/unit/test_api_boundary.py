@@ -73,6 +73,14 @@ _PUBLIC_SURFACE: frozenset[str] = frozenset(
 		"__version__",
 		"BdiBtbLendingOpenPositionsReader",
 		"BdiStocksSummaryReader",
+		"InstrumentsFileAdrReader",
+		"InstrumentsFileBtcReader",
+		"InstrumentsFileEqtyFwdReader",
+		"InstrumentsFileEqtyReader",
+		"InstrumentsFileExrcEqtsReader",
+		"InstrumentsFileFxdIncmReader",
+		"InstrumentsFileOptnOnEqtsReader",
+		"InstrumentsFileOptnOnSpotAndFuturesReader",
 		"InstrumentsFileReader",
 		"InstrumentsLayoutMetaReader",
 	}
@@ -86,7 +94,20 @@ _PUBLIC_SURFACE: frozenset[str] = frozenset(
 # (`search_trading_session`) is listed with an empty set: the path is public, it exports nothing.
 _SECTION_SURFACE: dict[str, frozenset[str]] = {
 	"daily_bulletin": frozenset({"BdiBtbLendingOpenPositionsReader", "BdiStocksSummaryReader"}),
-	"search_trading_session": frozenset({"InstrumentsFileReader", "InstrumentsLayoutMetaReader"}),
+	"search_trading_session": frozenset(
+		{
+			"InstrumentsFileAdrReader",
+			"InstrumentsFileBtcReader",
+			"InstrumentsFileEqtyFwdReader",
+			"InstrumentsFileEqtyReader",
+			"InstrumentsFileExrcEqtsReader",
+			"InstrumentsFileFxdIncmReader",
+			"InstrumentsFileOptnOnEqtsReader",
+			"InstrumentsFileOptnOnSpotAndFuturesReader",
+			"InstrumentsFileReader",
+			"InstrumentsLayoutMetaReader",
+		}
+	),
 }
 
 # Optional-extra modules that must never be imported at package-import time. The `Reader` port

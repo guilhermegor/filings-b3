@@ -57,10 +57,23 @@ def test_reports_both_directions_at_once() -> None:
 	assert len(list_problems) == 2
 
 
-def test_mapped_columns_are_the_reader_paths_and_scalars() -> None:
-	"""The mapped set is exactly the instruments reader's scalar + path column keys."""
+def test_mapped_columns_are_the_consolidated_reader_paths() -> None:
+	"""The mapped set is exactly the consolidated instruments reader's path column keys."""
 	from filings_b3.search_trading_session import instruments_file as inst
 
-	set_expected = frozenset(inst._DICT_SCALARS) | frozenset(inst._DICT_PATHS)
+	assert drift.mapped_columns() == frozenset(inst._DICT_PATHS)
 
-	assert drift.mapped_columns() == set_expected
+
+def test_mapped_columns_exclude_the_per_type_readers() -> None:
+	"""A per-type reader's own columns never leak into the UP2DATA-pinned drift comparison.
+
+	The oracle compares against B3's consolidated UP2DATA layout, which does not describe the
+	``InstrmInf`` sub-blocks — so a sub-block column appearing here would be reported as drift
+	against a layout that was never meant to declare it.
+	"""
+	from filings_b3.search_trading_session import instruments_file_adr as adr
+
+	set_adr_only = frozenset(adr._DICT_PATHS) - frozenset({"TCKR_SYMB", "ISIN", "CFICD"})
+
+	assert not (drift.mapped_columns() & frozenset({"CUSIP", "PRGM_LVL", "PPSN_CCY"}))
+	assert "PPSN_CCY" in set_adr_only

@@ -26,6 +26,14 @@ from filings_b3.daily_bulletin import (
 	BdiStocksSummaryReader,
 )
 from filings_b3.search_trading_session import (
+	InstrumentsFileAdrReader,
+	InstrumentsFileBtcReader,
+	InstrumentsFileEqtyFwdReader,
+	InstrumentsFileEqtyReader,
+	InstrumentsFileExrcEqtsReader,
+	InstrumentsFileFxdIncmReader,
+	InstrumentsFileOptnOnEqtsReader,
+	InstrumentsFileOptnOnSpotAndFuturesReader,
 	InstrumentsFileReader,
 	InstrumentsLayoutMetaReader,
 )
@@ -40,6 +48,14 @@ except PackageNotFoundError:  # pragma: no cover - source tree without an instal
 __all__ = [
 	"BdiBtbLendingOpenPositionsReader",
 	"BdiStocksSummaryReader",
+	"InstrumentsFileAdrReader",
+	"InstrumentsFileBtcReader",
+	"InstrumentsFileEqtyFwdReader",
+	"InstrumentsFileEqtyReader",
+	"InstrumentsFileExrcEqtsReader",
+	"InstrumentsFileFxdIncmReader",
+	"InstrumentsFileOptnOnEqtsReader",
+	"InstrumentsFileOptnOnSpotAndFuturesReader",
 	"InstrumentsFileReader",
 	"InstrumentsLayoutMetaReader",
 	"__version__",

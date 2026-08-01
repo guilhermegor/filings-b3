@@ -90,14 +90,19 @@ def layout_drift(
 
 
 def mapped_columns() -> frozenset[str]:
-	"""Return the canonical column names the instruments reader maps (scalars + path columns).
+	"""Return the canonical column names the consolidated instruments reader maps.
+
+	Only the **consolidated** reader is gated here: its column set is pinned to B3's published
+	UP2DATA layout, which is what this oracle compares against. The per-type readers
+	(``instruments_file_adr`` and siblings) project one ``InstrmInf`` sub-block each and are
+	derived from the taxonomy sheet instead, which the UP2DATA layout does not describe.
 
 	Returns
 	-------
 	frozenset of str
 		The reader's full mapped column set — the drift oracle's "what we read" side.
 	"""
-	return frozenset(_inst._DICT_SCALARS) | frozenset(_inst._DICT_PATHS)
+	return frozenset(_inst._DICT_PATHS)
 
 
 # ---------------------------------------------------------------------------------------------
