@@ -57,11 +57,17 @@ def test_reports_both_directions_at_once() -> None:
 	assert len(list_problems) == 2
 
 
-def test_mapped_columns_are_the_consolidated_reader_paths() -> None:
-	"""The mapped set is exactly the consolidated instruments reader's path column keys."""
+def test_mapped_columns_are_the_consolidated_reader_paths_and_joins() -> None:
+	"""The mapped set is the consolidated reader's path columns **plus** its self-joined ones.
+
+	A column filled by resolving a reference to another record (a strategy leg's underlying) is
+	just as mapped as one resolved by a direct path — and B3's layout declares both the same way,
+	so omitting the joins would report them as drift against a layout that does list them.
+	"""
 	from filings_b3.search_trading_session import instruments_file as inst
 
-	assert drift.mapped_columns() == frozenset(inst._DICT_PATHS)
+	assert drift.mapped_columns() == frozenset(inst._DICT_PATHS) | frozenset(inst._DICT_JOINS)
+	assert frozenset(inst._DICT_JOINS) <= drift.mapped_columns()
 
 
 def test_mapped_columns_exclude_the_per_type_readers() -> None:

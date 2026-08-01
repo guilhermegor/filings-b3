@@ -29,6 +29,21 @@ Colunas de data (`XPRTN_DT`, `TRADG_START_DT`, …) são `datetime.date`; coluna
 valor/quantidade (`CTRCT_MLTPLR`, `EXRC_PRIC`, `MKT_CPTLSTN`, …) são
 `decimal.Decimal` exato. As demais preservam o texto exato da fonte.
 
+### Pernas de estratégia
+
+Uma estratégia (operação estruturada) tem **duas pernas**, cada uma com a sua direção e o seu ativo
+objeto: `SD_TP_CD1`/`UNDRLYG_TCKR_SYMB1` e `SD_TP_CD2`/`UNDRLYG_TCKR_SYMB2`. No arquivo real, as
+pernas **diferem** — tipicamente `BUYI` num vencimento e `SELL` noutro.
+
+As duas colunas de ativo objeto são resolvidas por **_self-join_** dentro do próprio arquivo: no XML
+a perna referencia o outro instrumento apenas por um identificador proprietário
+(`200001037989`), enquanto o _ticker_ que o layout UP2DATA promete vive no **registro daquele outro
+instrumento**. O _reader_ faz essa tradução, então a coluna entrega `DDIF38`, não o número. Uma
+referência a um instrumento ausente do arquivo fica nula, nunca com o valor da perna anterior.
+
+Só registros de estratégia preenchem estas quatro colunas; nos demais instrumentos elas são
+legitimamente nulas.
+
 ---
 
 ## Exemplos

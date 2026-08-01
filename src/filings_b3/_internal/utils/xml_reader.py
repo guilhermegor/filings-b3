@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+import re
 from xml.etree.ElementTree import Element  # noqa: S405 - typing only; parsing uses defusedxml
 
 from defusedxml.ElementTree import parse as parse_xml
@@ -54,6 +55,62 @@ def _local_name(str_tag: str) -> str:
 		The bare local name (``"TckrSymb"``).
 	"""
 	return str_tag.rpartition("}")[2]
+
+
+# A path segment may carry a 1-based repeat index — `StrtgyLegList[2]` is the SECOND sibling of
+# that name. Regulatory XML repeats a container instead of numbering it (a strategy's legs, a
+# bond's coupons), so without this a repeated block is unreachable past its first occurrence.
+_RE_INDEXED = re.compile(r"^(?P<name>[^\[\]]+)\[(?P<index>\d+)\]$")
+
+
+@type_checker
+def _nth_child(cls_elem: Element, str_local: str, int_index: int) -> Element | None:
+	"""Return the ``int_index``-th (1-based) direct child with the given local name, or ``None``.
+
+	Parameters
+	----------
+	cls_elem : xml.etree.ElementTree.Element
+		The parent element to search under.
+	str_local : str
+		The child's local name (namespace-agnostic).
+	int_index : int
+		1-based position among the siblings sharing that name.
+
+	Returns
+	-------
+	xml.etree.ElementTree.Element or None
+		The matching child, or ``None`` when there are fewer than ``int_index`` of them.
+	"""
+	int_seen = 0
+	for cls_child in cls_elem:
+		if _local_name(cls_child.tag) != str_local:
+			continue
+		int_seen += 1
+		if int_seen == int_index:
+			return cls_child
+	return None
+
+
+@type_checker
+def _segment_child(cls_elem: Element, str_seg: str) -> Element | None:
+	"""Resolve one path segment — plain local name, or ``Name[n]`` for the n-th repeat.
+
+	Parameters
+	----------
+	cls_elem : xml.etree.ElementTree.Element
+		The parent element to search under.
+	str_seg : str
+		A single path segment, optionally carrying a 1-based ``[n]`` repeat index.
+
+	Returns
+	-------
+	xml.etree.ElementTree.Element or None
+		The matching child, or ``None`` when absent.
+	"""
+	cls_match = _RE_INDEXED.match(str_seg)
+	if cls_match is None:
+		return _first_child(cls_elem, str_seg)
+	return _nth_child(cls_elem, cls_match["name"], int(cls_match["index"]))
 
 
 @type_checker
@@ -111,7 +168,7 @@ def _resolve_text(cls_elem: Element, str_path: str) -> str | None:
 			if str_val is not None:
 				return str_val
 		return None
-	cls_next = _first_child(cls_elem, str_seg)
+	cls_next = _segment_child(cls_elem, str_seg)
 	if cls_next is None:
 		return None
 	return _resolve_text(cls_next, str_rest) if str_rest else _leaf_text(cls_next)
@@ -142,7 +199,7 @@ def _has_path(cls_elem: Element, str_path: str) -> bool:
 		return str_seg[1:] in cls_elem.attrib
 	if str_seg == "*":
 		return any(not str_rest or _has_path(cls_child, str_rest) for cls_child in cls_elem)
-	cls_next = _first_child(cls_elem, str_seg)
+	cls_next = _segment_child(cls_elem, str_seg)
 	if cls_next is None:
 		return False
 	return _has_path(cls_next, str_rest) if str_rest else True
@@ -208,6 +265,7 @@ def read_xml(
 	list_date_cols: Sequence[str] | None = None,
 	list_decimal_cols: Sequence[str] | None = None,
 	str_row_filter: str | None = None,
+	dict_joins: Mapping[str, tuple[str, str, str]] | None = None,
 ) -> pd.DataFrame:
 	"""Flatten a namespaced XML into a typed, contract-validated DataFrame.
 
@@ -248,6 +306,15 @@ def read_xml(
 		common attributes that live *outside* the sub-block. ``None`` (default) keeps every
 		record. Filtering happens **before** contract validation, so a column required for this
 		type is not judged against records of another type.
+	dict_joins : mapping of {str: tuple of (str, str, str)}, optional
+		**Self-join within the document**: column → ``(fk_path, pk_path, value_path)``. A record
+		that references another record carries only an opaque identifier, while the useful value
+		(a ticker) lives on the referenced record. Each record contributes
+		``pk_path → value_path`` to a lookup table; the column is then ``fk_path``'s value
+		translated through it, or ``None`` when the reference does not resolve. The lookup spans
+		**every** record in the file, not only the filtered rows, so a filtered per-type read can
+		still resolve references into types it excluded. Joining happens after all rows are read
+		and **before** contract validation and typing.
 
 	Returns
 	-------
@@ -266,10 +333,21 @@ def read_xml(
 		for str_col, str_path in (dict_scalars or {}).items()
 	}
 
+	# Lookup tables for the self-joins, keyed by primary-key path and value path together, so that
+	# joins sharing a target build it once. Populated from EVERY record, including filtered rows.
+	dict_lookups: dict[tuple[str, str], dict[str, str]] = {
+		(str_pk, str_value): {} for _, str_pk, str_value in (dict_joins or {}).values()
+	}
+
 	list_rows: list[dict[str, str | None]] = []
 	for cls_rec in cls_root.iter():
 		if _local_name(cls_rec.tag) != str_row_tag:
 			continue
+		for (str_pk, str_value), dict_lookup in dict_lookups.items():
+			str_key = _resolve_text(cls_rec, str_pk)
+			str_val = _resolve_text(cls_rec, str_value)
+			if str_key is not None and str_val is not None:
+				dict_lookup[str_key] = str_val
 		if str_row_filter is not None and not _has_path(cls_rec, str_row_filter):
 			continue
 		dict_row: dict[str, str | None] = dict(dict_scalar_vals)
@@ -282,9 +360,19 @@ def read_xml(
 				),
 				None,
 			)
+		# Store the raw foreign key; it is translated below, once every record has been seen.
+		for str_col, (str_fk, _, _) in (dict_joins or {}).items():
+			dict_row[str_col] = _resolve_text(cls_rec, str_fk)
 		list_rows.append(dict_row)
 
-	list_cols = list(dict_scalars or {}) + list(dict_paths)
+	for dict_row in list_rows:
+		for str_col, (_, str_pk, str_value) in (dict_joins or {}).items():
+			str_key = dict_row[str_col]
+			dict_row[str_col] = (
+				dict_lookups[(str_pk, str_value)].get(str_key) if str_key is not None else None
+			)
+
+	list_cols = list(dict_scalars or {}) + list(dict_paths) + list(dict_joins or {})
 	df_raw = pd.DataFrame(list_rows, columns=list_cols, dtype="object")
 
 	list_problems = find_contract_problems(df_raw, cls_contract)

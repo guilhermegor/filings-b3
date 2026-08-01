@@ -17,6 +17,28 @@ Contracts are grouped into section subpackages that mirror `src/filings_b3/` one
 The section folder already names the macro-section, so the filename drops the redundant source
 prefix — `daily_bulletin/stocks_summary.py`, **not** `bdi_stocks_summary.py`.
 
+## ⛔ FIRST: confirm the layout source WITH THE USER, before writing the file
+
+**Standing user rule (2026-08-01), non-negotiable:** *"always when starting the implementation of a
+new file, check with me the layout that must be used as a data contract file, so we can stay in
+tune that the correct one is being applied."*
+
+So, **before** creating a new reader or contract — not at review time, not at PR time:
+
+1. State the exact document you intend to treat as the data contract: **file / sheet / URL**, plus
+   its **version** where it has one (the catalog PDF is versioned; the XLSX is not).
+2. **Ask the user to confirm it is the right one, and wait.** Treat it as blocking. Choosing the
+   wrong source silently poisons every column, and a green test suite will never reveal it — the
+   reader is perfectly consistent with the wrong spec.
+3. This applies **per new file, including a generated batch**. A batch is many new files at once,
+   not an exemption from the check.
+
+**When the published layout and a real artifact disagree, stop and surface it.** Do not let the
+artifact quietly overrule B3's document: report the conflict, check *every* authoritative source
+this file lists (the XLSX **and** the catalog PDF), and get the user's call.
+
+That case is real, not hypothetical — see the `SdTpCd` example under "Reconcile the layout" below.
+
 ## The authoritative sources — B3's own layouts, never stpstone
 
 `stpstone` is the *migration seed*, not the spec. It has been observed to **drop columns** the
@@ -52,3 +74,25 @@ payload — carry and type them anyway (the reader must type **every** column th
 
 Record in the contract's module docstring that the columns were verified this way, with the
 glossary version date — so the next reader trusts the pattern instead of re-deriving it.
+
+### A published layout can itself be WRONG — the artifact is the tiebreaker, the user is the judge
+
+For `search_trading_session`, the authoritative sources are **two**, and they can disagree with each
+other and with reality:
+
+| Source | What it is |
+|---|---|
+| `BVBG.028 para UP2DATA.xlsx` | sheet `InstrumentsConsolidatedFile` = the IN file's 52-column flat layout; sheet `BVBG.028 - Taxonomia` = the full 450-row tag tree (cardinality + XSD type). URL pinned in `search_trading_session/instruments_layout_meta.py`. |
+| BVBG.028 **catalog PDF** (v2.6) | B3's prose specification of the same message. |
+
+Measured case (issue #149): the XLSX declares the strategy-leg path as
+`<InstrmInf> - <StrtgyInf> - <StrtgyLegList> - <LegId> - <SdTpCd>`, and the reader copied it
+faithfully — but in a **real** `IN` file `SdTpCd` is a **sibling** of `LegId`, not its child. The
+path therefore never resolved and all four leg columns shipped `None` on 100% of 1,065 strategy
+records, through several releases, with nothing red. The same sheet also gives legs 1 and 2
+**identical** paths, distinguishing them only in the `Observações` prose.
+
+Two lessons: a subset contract validates **column presence, never population**, so an all-null
+column is a *suspected mapping bug* until justified — print them in every live reconcile and give
+each a written verdict. And when the layout loses to the artifact, that is exactly the moment to
+**ask the user** rather than to quietly follow the bytes.

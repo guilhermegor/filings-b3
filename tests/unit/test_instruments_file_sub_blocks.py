@@ -162,11 +162,39 @@ def test_consolidated_reader_keeps_its_drift_gated_layout() -> None:
 	"""
 	cls_r = InstrumentsFileReader(_DATE_REF)
 
+	cls_r = InstrumentsFileReader(_DATE_REF)
+
 	assert cls_r.str_sub_block is None
 	assert cls_r.dict_common_paths == {}
-	assert len(cls_r.dict_paths) == 52
+	# 52 source columns total, however each one is resolved — two of them are self-joins.
+	assert len(cls_r.dict_paths) + len(cls_r.dict_joins) == 52
 	assert cls_r.cls_contract is INSTRUMENTS_FILE
 	assert "INSTRM_DESC" not in cls_r.dict_paths
+
+
+def test_consolidated_reader_resolves_both_strategy_legs_distinctly() -> None:
+	"""The two strategy legs must resolve independently, each to its own leg.
+
+	Regression for the released bug (#149): both legs shared one path, which never resolved at all
+	(``SdTpCd`` is a *sibling* of ``LegId``, not a child) — so all four leg columns were null on
+	100% of strategy records. Even corrected, a shared path would have duplicated leg 1.
+	"""
+	cls_r = InstrumentsFileReader(_DATE_REF)
+
+	(str_leg1,) = cls_r.dict_paths["SD_TP_CD1"]
+	(str_leg2,) = cls_r.dict_paths["SD_TP_CD2"]
+	assert str_leg1 != str_leg2, "both legs share a path — leg 2 would duplicate leg 1"
+	assert "StrtgyLegList[1]" in str_leg1
+	assert "StrtgyLegList[2]" in str_leg2
+	# LegId is a sibling of the value, never its parent — the shape that caused the null columns.
+	assert "LegId/" not in str_leg1
+
+	str_fk1, str_pk, str_value = cls_r.dict_joins["UNDRLYG_TCKR_SYMB1"]
+	str_fk2, _, _ = cls_r.dict_joins["UNDRLYG_TCKR_SYMB2"]
+	assert str_fk1 != str_fk2
+	# The join brings back a ticker, not the opaque id the leg actually references.
+	assert str_value.endswith("TckrSymb")
+	assert str_pk == "FinInstrmId/OthrId/Id"
 
 
 def test_base_rejects_a_reader_missing_a_required_attribute() -> None:

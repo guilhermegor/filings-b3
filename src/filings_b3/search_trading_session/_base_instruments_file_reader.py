@@ -135,6 +135,7 @@ class _BaseInstrumentsFileReader(IngestionReader):
 	dict_own_paths: Mapping[str, str] = {}  # noqa: RUF012 - immutable by convention, never mutated
 	dict_common_paths: Mapping[str, str] = _COMMON_PATHS
 	dict_full_paths: Mapping[str, tuple[str, ...]] | None = None
+	dict_joins: Mapping[str, tuple[str, str, str]] = {}  # noqa: RUF012 - never mutated
 
 	list_date_cols: Sequence[str] = ()
 	list_decimal_cols: Sequence[str] = ()
@@ -234,7 +235,11 @@ class _BaseInstrumentsFileReader(IngestionReader):
 			Column → dtype string for :func:`~filings_b3._internal.utils.dtypes.apply_dtypes`.
 		"""
 		set_typed = {*self.list_all_date_cols, *self.list_decimal_cols}
-		return {str_col: "str" for str_col in self.dict_paths if str_col not in set_typed}
+		return {
+			str_col: "str"
+			for str_col in (*self.dict_paths, *self.dict_joins)
+			if str_col not in set_typed
+		}
 
 	@property
 	def list_all_date_cols(self) -> tuple[str, ...]:
@@ -323,6 +328,7 @@ class _BaseInstrumentsFileReader(IngestionReader):
 				str_row_filter=(
 					None if self.str_sub_block is None else f"InstrmInf/{self.str_sub_block}"
 				),
+				dict_joins=self.dict_joins,
 			)
 			return stamp_provenance(
 				df_typed,
