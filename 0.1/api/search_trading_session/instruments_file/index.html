@@ -702,6 +702,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Descrição">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pernas-de-estrategia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pernas de estratégia
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1146,6 +1163,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Descrição">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pernas-de-estrategia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pernas de estratégia
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1243,6 +1277,17 @@ aplicam ao instrumento da linha.</p>
 <p>Colunas de data (<code>XPRTN_DT</code>, <code>TRADG_START_DT</code>, …) são <code>datetime.date</code>; colunas de
 valor/quantidade (<code>CTRCT_MLTPLR</code>, <code>EXRC_PRIC</code>, <code>MKT_CPTLSTN</code>, …) são
 <code>decimal.Decimal</code> exato. As demais preservam o texto exato da fonte.</p>
+<h3 id="pernas-de-estrategia">Pernas de estratégia<a class="headerlink" href="#pernas-de-estrategia" title="Permanent link">&para;</a></h3>
+<p>Uma estratégia (operação estruturada) tem <strong>duas pernas</strong>, cada uma com a sua direção e o seu ativo
+objeto: <code>SD_TP_CD1</code>/<code>UNDRLYG_TCKR_SYMB1</code> e <code>SD_TP_CD2</code>/<code>UNDRLYG_TCKR_SYMB2</code>. No arquivo real, as
+pernas <strong>diferem</strong> — tipicamente <code>BUYI</code> num vencimento e <code>SELL</code> noutro.</p>
+<p>As duas colunas de ativo objeto são resolvidas por <strong><em>self-join</em></strong> dentro do próprio arquivo: no XML
+a perna referencia o outro instrumento apenas por um identificador proprietário
+(<code>200001037989</code>), enquanto o <em>ticker</em> que o layout UP2DATA promete vive no <strong>registro daquele outro
+instrumento</strong>. O <em>reader</em> faz essa tradução, então a coluna entrega <code>DDIF38</code>, não o número. Uma
+referência a um instrumento ausente do arquivo fica nula, nunca com o valor da perna anterior.</p>
+<p>Só registros de estratégia preenchem estas quatro colunas; nos demais instrumentos elas são
+legitimamente nulas.</p>
 <hr />
 <h2 id="exemplos">Exemplos<a class="headerlink" href="#exemplos" title="Permanent link">&para;</a></h2>
 <h3 id="ler-os-instrumentos-de-um-pregao">Ler os instrumentos de um pregão<a class="headerlink" href="#ler-os-instrumentos-de-um-pregao" title="Permanent link">&para;</a></h3>
