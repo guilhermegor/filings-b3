@@ -12,6 +12,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from filings_b3._internal.utils.tabular_reader import ContractError, FileContract
@@ -268,3 +269,111 @@ def test_read_xml_attribute_is_none_when_absent(tmp_path: Path) -> None:
 	)
 
 	assert df_out["MISSING"].isna().all()
+
+
+# Two records: a strategy carrying TWO legs with DIFFERENT values (the case a first-match-wins
+# reader silently collapses), and the instrument one of those legs references by id.
+_XML_LEGS = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="{_NS}">
+  <BizGrp>
+    <Instrm>
+      <FinInstrmId><OthrId><Id>200000363903</Id></OthrId></FinInstrmId>
+      <InstrmInf><FutrCtrctsInf><TckrSymb>DDIF38</TckrSymb></FutrCtrctsInf></InstrmInf>
+    </Instrm>
+    <Instrm>
+      <FinInstrmId><OthrId><Id>999</Id></OthrId></FinInstrmId>
+      <InstrmInf><StrtgyInf><TckrSymb>DIFF30F35</TckrSymb>
+        <StrtgyLegList><LegId>1</LegId><SdTpCd>BUYI</SdTpCd>
+          <UndrlygInstrmId><OthrId><Id>200000363903</Id></OthrId></UndrlygInstrmId>
+        </StrtgyLegList>
+        <StrtgyLegList><LegId>2</LegId><SdTpCd>SELL</SdTpCd>
+          <UndrlygInstrmId><OthrId><Id>320100</Id></OthrId></UndrlygInstrmId>
+        </StrtgyLegList>
+      </StrtgyInf></InstrmInf>
+    </Instrm>
+  </BizGrp>
+</Document>
+"""
+
+
+def _write_legs(path_dir: Path) -> Path:
+	path_xml = path_dir / "legs.xml"
+	path_xml.write_text(_XML_LEGS, encoding="utf-8")
+	return path_xml
+
+
+def test_read_xml_indexed_segment_addresses_the_nth_repeat(tmp_path: Path) -> None:
+	"""``Tag[n]`` reaches the n-th sibling repeat — legs 1 and 2 must not collapse into one.
+
+	Regression for the released bug where both legs mapped to the same path: first-match-wins gave
+	leg 1's value to both columns, so a two-legged strategy read as if both sides were identical.
+	"""
+	cls_contract = FileContract("Test", "test", ("SD_TP_CD1", "SD_TP_CD2"), ())
+
+	df_out = read_xml(
+		_write_legs(tmp_path),
+		"Instrm",
+		{
+			"SD_TP_CD1": ("InstrmInf/StrtgyInf/StrtgyLegList[1]/SdTpCd",),
+			"SD_TP_CD2": ("InstrmInf/StrtgyInf/StrtgyLegList[2]/SdTpCd",),
+		},
+		{"SD_TP_CD1": "str", "SD_TP_CD2": "str"},
+		cls_contract,
+		str_row_filter="InstrmInf/StrtgyInf",
+	)
+
+	assert df_out.loc[0, "SD_TP_CD1"] == "BUYI"
+	assert df_out.loc[0, "SD_TP_CD2"] == "SELL"
+	assert df_out.loc[0, "SD_TP_CD1"] != df_out.loc[0, "SD_TP_CD2"]
+
+
+def test_read_xml_indexed_segment_is_none_past_the_last_repeat(tmp_path: Path) -> None:
+	"""Asking for a repeat that does not exist yields ``None``, never the last one available."""
+	cls_contract = FileContract("Test", "test", (), ())
+
+	df_out = read_xml(
+		_write_legs(tmp_path),
+		"Instrm",
+		{"LEG3": ("InstrmInf/StrtgyInf/StrtgyLegList[3]/SdTpCd",)},
+		{"LEG3": "str"},
+		cls_contract,
+		str_row_filter="InstrmInf/StrtgyInf",
+	)
+
+	assert df_out["LEG3"].isna().all()
+
+
+def test_read_xml_self_join_resolves_a_reference_to_another_record(tmp_path: Path) -> None:
+	"""``dict_joins`` translates an opaque id into a value carried by the referenced record.
+
+	A strategy leg names its underlying only by a proprietary id; the ticker lives on that other
+	instrument's record. Without the join the column can only hold the meaningless id.
+	"""
+	cls_contract = FileContract("Test", "test", ("UNDRLYG_TCKR_SYMB1",), ())
+
+	df_out = read_xml(
+		_write_legs(tmp_path),
+		"Instrm",
+		{"TCKR_SYMB": ("InstrmInf/*/TckrSymb",)},
+		{"TCKR_SYMB": "str", "UNDRLYG_TCKR_SYMB1": "str", "UNDRLYG_TCKR_SYMB2": "str"},
+		cls_contract,
+		str_row_filter="InstrmInf/StrtgyInf",
+		dict_joins={
+			"UNDRLYG_TCKR_SYMB1": (
+				"InstrmInf/StrtgyInf/StrtgyLegList[1]/UndrlygInstrmId/OthrId/Id",
+				"FinInstrmId/OthrId/Id",
+				"InstrmInf/*/TckrSymb",
+			),
+			"UNDRLYG_TCKR_SYMB2": (
+				"InstrmInf/StrtgyInf/StrtgyLegList[2]/UndrlygInstrmId/OthrId/Id",
+				"FinInstrmId/OthrId/Id",
+				"InstrmInf/*/TckrSymb",
+			),
+		},
+	)
+
+	# Leg 1 points at a record present in the file, so the id becomes that record's ticker. The
+	# lookup spans every record, including the one the row filter excluded from the output.
+	assert df_out.loc[0, "UNDRLYG_TCKR_SYMB1"] == "DDIF38"
+	# Leg 2 points at an instrument absent from this file — unresolved, never a stale carry-over.
+	assert pd.isna(df_out.loc[0, "UNDRLYG_TCKR_SYMB2"])

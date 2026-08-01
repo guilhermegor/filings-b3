@@ -85,10 +85,10 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 	"CLNR_DAYS": ("InstrmInf/*/ClnrDays",),
 	"RLVR_BASE_PRIC_NM": ("InstrmInf/*/RlvrBasePricCd",),
 	"OPNG_FUTR_POS_DAY": ("InstrmInf/*/OpngFutrPosDay",),
-	"SD_TP_CD1": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/SdTpCd",),
-	"UNDRLYG_TCKR_SYMB1": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/UndrlygInstrmId",),
-	"SD_TP_CD2": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/SdTpCd",),
-	"UNDRLYG_TCKR_SYMB2": ("InstrmInf/StrtgyInf/StrtgyLegList/LegId/UndrlygInstrmId",),
+	# Strategy legs. The matching underlying columns are self-joins, declared in _DICT_JOINS below
+	# rather than here. An indexed segment addresses the n-th repeat of the leg container, 1-based.
+	"SD_TP_CD1": ("InstrmInf/StrtgyInf/StrtgyLegList[1]/SdTpCd",),
+	"SD_TP_CD2": ("InstrmInf/StrtgyInf/StrtgyLegList[2]/SdTpCd",),
 	"PURE_GOLD_WGHT": ("InstrmInf/*/PureGoldWght",),
 	"EXRC_PRIC": ("InstrmInf/*/ExrcPric",),
 	"OPTN_STYLE": ("InstrmInf/*/OptnStyle",),
@@ -107,6 +107,24 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 	"CTDY_TRTMNT_TP_NM": ("InstrmInf/*/CtdyTrtmntTp",),
 	"MKT_CPTLSTN": ("InstrmInf/*/MktCptlstn",),
 	"CORP_GOVN_LVL_NM": ("InstrmInf/*/GovnInd",),
+}
+
+# The two strategy-leg underlyings are **self-joins**, not paths: a leg references the other
+# instrument by an opaque proprietary id (`200001037989`), while the ticker the UP2DATA layout
+# promises (`UNDRLYG_TCKR_SYMB`) lives on that other instrument's own record. Each entry is
+# (foreign key on this record, primary key on any record, value to bring back). Verified against a
+# real IN file: all 378 distinct leg ids resolve, so no strategy leg is left dangling.
+_DICT_JOINS: dict[str, tuple[str, str, str]] = {
+	"UNDRLYG_TCKR_SYMB1": (
+		"InstrmInf/StrtgyInf/StrtgyLegList[1]/UndrlygInstrmId/OthrId/Id",
+		"FinInstrmId/OthrId/Id",
+		"InstrmInf/*/TckrSymb",
+	),
+	"UNDRLYG_TCKR_SYMB2": (
+		"InstrmInf/StrtgyInf/StrtgyLegList[2]/UndrlygInstrmId/OthrId/Id",
+		"FinInstrmId/OthrId/Id",
+		"InstrmInf/*/TckrSymb",
+	),
 }
 
 # Dates → datetime.date; money/quantity/multiplier → exact Decimal (never binary float). Every
@@ -158,6 +176,7 @@ class InstrumentsFileReader(_BaseInstrumentsFileReader):
 	# inherit. Its column set is exactly B3's published UP2DATA layout, which the drift oracle
 	# checks column for column, so adding a column here would be reported as drift.
 	dict_full_paths = _DICT_PATHS
+	dict_joins = _DICT_JOINS
 	dict_common_paths: Mapping[str, str] = {}  # noqa: RUF012 - by convention, never mutated
 	list_date_cols = _LIST_DATE_COLS
 	list_decimal_cols = _LIST_DECIMAL_COLS

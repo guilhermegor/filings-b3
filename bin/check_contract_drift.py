@@ -97,12 +97,17 @@ def mapped_columns() -> frozenset[str]:
 	(``instruments_file_adr`` and siblings) project one ``InstrmInf`` sub-block each and are
 	derived from the taxonomy sheet instead, which the UP2DATA layout does not describe.
 
+	Both plain paths **and** self-joined columns count as mapped: a column the reader fills by
+	resolving a reference to another record (a strategy leg's underlying ticker) is just as much
+	"a column we read" as one resolved by a direct path, and B3's layout declares them the same
+	way. Omitting the joins would report them as drift against a layout that does declare them.
+
 	Returns
 	-------
 	frozenset of str
 		The reader's full mapped column set — the drift oracle's "what we read" side.
 	"""
-	return frozenset(_inst._DICT_PATHS)
+	return frozenset(_inst._DICT_PATHS) | frozenset(_inst._DICT_JOINS)
 
 
 # ---------------------------------------------------------------------------------------------
