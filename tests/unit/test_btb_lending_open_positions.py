@@ -176,9 +176,16 @@ def test_read_stamps_this_readers_source_key(_patch_download: None) -> None:
 	assert df_out["url"].iloc[0].endswith("/1/1000")
 
 
-def test_reader_is_exported_from_the_package_root() -> None:
-	"""A consumer imports from the package root, never from the section module path."""
-	import filings_b3
+def test_reader_is_exported_from_its_section_and_not_from_the_root() -> None:
+	"""A consumer imports from the macro-section — the flat root export was removed in 0.2.0.
 
-	assert filings_b3.BdiBtbLendingOpenPositionsReader is BdiBtbLendingOpenPositionsReader
-	assert "BdiBtbLendingOpenPositionsReader" in filings_b3.__all__
+	Inverted from the #122 contract by #163: the section path is now the only public one, so the
+	root must NOT resolve the name (a re-export would quietly restore the flat surface).
+	"""
+	import filings_b3
+	from filings_b3 import daily_bulletin
+
+	assert daily_bulletin.BdiBtbLendingOpenPositionsReader is BdiBtbLendingOpenPositionsReader
+	assert "BdiBtbLendingOpenPositionsReader" in daily_bulletin.__all__
+	assert not hasattr(filings_b3, "BdiBtbLendingOpenPositionsReader")
+	assert "BdiBtbLendingOpenPositionsReader" not in filings_b3.__all__

@@ -82,9 +82,14 @@ df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 print(df[["TCKR_SYMB", "STOCK_BALANCE", "BALANCE"]].head())
 ```
 
-Importar pela **macro-seção** (`filings_b3.daily_bulletin`) é a forma organizada e preferida; a
-reexportação plana a partir da raiz (`from filings_b3 import BdiBtbLendingOpenPositionsReader`)
-continua válida por retrocompatibilidade.
+Cada _reader_ é importado pela sua **macro-seção** (`filings_b3.daily_bulletin`,
+`filings_b3.search_trading_session`, …) — a única forma pública. A raiz do pacote não exporta
+_readers_.
+
+> ⚠️ **Mudança na 0.2.0** — até a 0.1.x cada _reader_ também era reexportado de forma plana na raiz
+> (`from filings_b3 import BdiBtbLendingOpenPositionsReader`). Isso **foi removido**: com seis
+> macro-seções e ~105 datasets previstos, a raiz viraria uma lista de mais de cem nomes. Troque o
+> _import_ pela seção correspondente.
 
 `date_ref` é **obrigatório** — o endpoint do BDI é endereçado por data, então não existe um padrão
 "mais recente". Veja a [documentação](https://guilhermegor.github.io/filings-b3/) para cada _reader_

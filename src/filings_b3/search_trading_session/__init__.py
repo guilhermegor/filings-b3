@@ -15,10 +15,9 @@ B3's published 52-column UP2DATA layout; each ``InstrumentsFile<Type>Reader`` ke
 of one sub-block and maps that block's **complete** field list — more columns, one instrument
 type. They share ``_base_instruments_file_reader`` and therefore one lifecycle.
 
-Every concrete reader is public from this section path — ``from
-filings_b3.search_trading_session import InstrumentsFileReader``, the organised form — and
-re-exported flat from the package root (``from filings_b3 import InstrumentsFileReader``) as a
-backward-compatible convenience.
+Every concrete reader is public from **this section path, and only from here** — ``from
+filings_b3.search_trading_session import InstrumentsFileReader``. The package root exports no
+readers (issue #163, 0.2.0).
 """
 
 from filings_b3.search_trading_session.instruments_file import InstrumentsFileReader

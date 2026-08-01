@@ -8,9 +8,9 @@ lifecycle — which is why it carries a section-local Template-Method base
 Sub-families follow B3's own naming: ``btb`` (securities lending), ``derivatives``,
 ``equities``, ``fixed_income``, ``indexes``, ``securities``, ``stocks``, ``operations``.
 
-Every concrete reader is public from this section path — ``from filings_b3.daily_bulletin
-import BdiStocksSummaryReader``, the organised form — and re-exported flat from the package
-root (``from filings_b3 import BdiStocksSummaryReader``) as a backward-compatible convenience.
+Every concrete reader is public from **this section path, and only from here** — ``from
+filings_b3.daily_bulletin import BdiStocksSummaryReader``. The package root exports no readers
+(issue #163, 0.2.0).
 """
 
 from filings_b3.daily_bulletin.btb_lending_open_positions import (

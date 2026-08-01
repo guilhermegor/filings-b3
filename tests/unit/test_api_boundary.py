@@ -63,28 +63,15 @@ _PKG = _package_name()
 _PKG_DIR = _SRC / _PKG
 _INTERNAL_DIR = _PKG_DIR / "_internal"
 
-# The frozen public API. Adding a name here is the deliberate act of publishing it — and the
-# only way this test goes green again after an export changes. A name may legitimately be
-# *promoted* out of `_internal` by re-exporting it from the package `__init__` (filings-cvm
-# does exactly this with `RetryPolicy`); what this snapshot forbids is that happening by
-# accident.
-_PUBLIC_SURFACE: frozenset[str] = frozenset(
-	{
-		"__version__",
-		"BdiBtbLendingOpenPositionsReader",
-		"BdiStocksSummaryReader",
-		"InstrumentsFileAdrReader",
-		"InstrumentsFileBtcReader",
-		"InstrumentsFileEqtyFwdReader",
-		"InstrumentsFileEqtyReader",
-		"InstrumentsFileExrcEqtsReader",
-		"InstrumentsFileFxdIncmReader",
-		"InstrumentsFileOptnOnEqtsReader",
-		"InstrumentsFileOptnOnSpotAndFuturesReader",
-		"InstrumentsFileReader",
-		"InstrumentsLayoutMetaReader",
-	}
-)
+# The frozen public API of the package ROOT. Adding a name here is the deliberate act of
+# publishing it — and the only way this test goes green again after an export changes. A name may
+# legitimately be *promoted* out of `_internal` by re-exporting it from the package `__init__`
+# (filings-cvm does exactly this with `RetryPolicy`); what this snapshot forbids is that happening
+# by accident.
+#
+# Readers are deliberately ABSENT: since 0.2.0 (#163) they are importable only from their own
+# macro-section, so the root holds `__version__` alone.
+_PUBLIC_SURFACE: frozenset[str] = frozenset({"__version__"})
 
 # The per-section public surface. Each macro-section directory is itself a stable public import
 # path (`from filings_b3.daily_bulletin import …`), not merely a source-tree folder — so its
@@ -307,12 +294,15 @@ def test_public_section_surface_matches_the_frozen_snapshot(str_section: str) ->
 
 
 @pytest.mark.parametrize("str_section", sorted(_SECTION_SURFACE), ids=lambda s: s)
-def test_every_section_export_is_reexported_at_the_root(str_section: str) -> None:
-	"""Every section reader is also exported flat from the root — the convenience never rots.
+def test_no_section_export_leaks_back_into_the_root(str_section: str) -> None:
+	"""A reader is importable from its section and **nowhere else**.
 
-	#122 keeps the flat root import as a backward-compatible convenience beside the organised
-	section path. That promise is real only if enforced: a reader added to a section but forgotten
-	at the root would leave ``from filings_b3 import <Reader>`` broken for that name.
+	This inverts the #122 rule on purpose. That issue kept a flat root re-export beside the
+	organised section path, and #163 (0.2.0) removed it: a flat surface does not survive the
+	library's scale — six macro-sections and ~105 datasets would turn the root into a
+	hundred-odd-name list, which is exactly what organising by section prevents. Re-adding a
+	reader to the root would quietly restore the surface this release removed, so the gate now
+	forbids it rather than requiring it.
 
 	Parameters
 	----------
@@ -322,10 +312,25 @@ def test_every_section_export_is_reexported_at_the_root(str_section: str) -> Non
 	mod_section = __import__(f"{_PKG}.{str_section}", fromlist=["__all__"])
 
 	for str_name in mod_section.__all__:
-		assert str_name in _PUBLIC_SURFACE, (
-			f"{_PKG}.{str_section} exports {str_name!r} but the root does not re-export it — "
-			"add it to the package __init__ so the flat import stays valid"
+		assert str_name not in _PUBLIC_SURFACE, (
+			f"{_PKG}.{str_section} exports {str_name!r} and the root re-exports it too — the flat "
+			"root surface was removed in 0.2.0 (#163); import it from its section instead"
 		)
+
+
+def test_the_root_exports_no_readers_at_all() -> None:
+	"""The package root carries ``__version__`` and nothing else.
+
+	The per-section test above only catches a *known* section leaking back. This catches the
+	root growing any reader-shaped export at all — including from a macro-section not yet listed
+	in :data:`_SECTION_SURFACE`.
+	"""
+	cls_pkg = __import__(_PKG)
+
+	assert frozenset(cls_pkg.__all__) == frozenset({"__version__"})
+	assert not [str_name for str_name in cls_pkg.__all__ if str_name.endswith("Reader")]
+	# Version discovery must survive dropping the readers, so assert the attribute still resolves.
+	assert isinstance(cls_pkg.__version__, str)
 
 
 # --------------------------

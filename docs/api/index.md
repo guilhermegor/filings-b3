@@ -16,8 +16,13 @@ uma visão geral (`index.md`) e **uma página por _reader_** (`Descrição` + `E
 | Dados de mercado | `filings_b3.market_data` | _planejada_ |
 | _Clearing_ (garantias) | `filings_b3.clearing` | _planejada_ |
 
-Cada _reader_ é importável pela sua seção (forma organizada, preferida) **e** reexportado de forma
-plana a partir da raiz `filings_b3` (retrocompatível). Só o subpacote `_internal` é privado.
+Cada _reader_ é importável **apenas pela sua seção** — `from filings_b3.daily_bulletin import …`.
+A raiz `filings_b3` exporta só `__version__`; o subpacote `_internal` é privado.
+
+!!! warning "Mudança na 0.2.0"
+    Até a 0.1.x cada _reader_ era **também** reexportado de forma plana na raiz. Isso foi removido:
+    com seis macro-seções e ~105 datasets previstos, a raiz viraria uma lista de mais de cem nomes,
+    exatamente o que a organização por seção existe para evitar.
 
 ## Fazendo esta seção crescer
 
