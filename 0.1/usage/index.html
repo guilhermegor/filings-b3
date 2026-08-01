@@ -1269,9 +1269,16 @@ proveniência:</p>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">BdiBtbLendingOpenPositionsReader</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;STOCK_BALANCE&quot;</span><span class="p">,</span> <span class="s2">&quot;BALANCE&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </span></code></pre></div>
-<p>Cada <em>reader</em> vive numa <strong>macro-seção</strong> (<code>daily_bulletin</code>, <code>search_trading_session</code>, …). Importar
-pela seção é a forma organizada e preferida; a reexportação plana a partir da raiz
-(<code>from filings_b3 import BdiBtbLendingOpenPositionsReader</code>) continua válida por retrocompatibilidade.</p>
+<p>Cada <em>reader</em> vive numa <strong>macro-seção</strong> (<code>daily_bulletin</code>, <code>search_trading_session</code>, …) e é
+importado <strong>de lá, e só de lá</strong>. A raiz do pacote não exporta <em>readers</em>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Mudança na 0.2.0</p>
+<p>Até a 0.1.x cada <em>reader</em> também era reexportado de forma plana na raiz
+(<code>from filings_b3 import BdiBtbLendingOpenPositionsReader</code>). Isso <strong>foi removido</strong>: com seis
+macro-seções e ~105 datasets previstos, a raiz viraria uma lista de mais de cem nomes — o
+oposto do que a organização por seção existe para resolver. Troque o <em>import</em> pela seção
+correspondente.</p>
+</div>
 <p><code>date_ref</code> é <strong>obrigatório</strong> — o endpoint do BDI é endereçado por data, então não existe um padrão
 "mais recente". Precisa do dia útil anterior? Calcule-o e passe explicitamente.</p>
 <h2 id="mantendo-o-artefato-bruto-camada-bronze">Mantendo o artefato bruto (camada bronze)<a class="headerlink" href="#mantendo-o-artefato-bruto-camada-bronze" title="Permanent link">&para;</a></h2>

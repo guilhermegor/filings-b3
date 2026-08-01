@@ -1186,8 +1186,14 @@ uma visão geral (<code>index.md</code>) e <strong>uma página por <em>reader</e
 </tr>
 </tbody>
 </table>
-<p>Cada <em>reader</em> é importável pela sua seção (forma organizada, preferida) <strong>e</strong> reexportado de forma
-plana a partir da raiz <code>filings_b3</code> (retrocompatível). Só o subpacote <code>_internal</code> é privado.</p>
+<p>Cada <em>reader</em> é importável <strong>apenas pela sua seção</strong> — <code>from filings_b3.daily_bulletin import …</code>.
+A raiz <code>filings_b3</code> exporta só <code>__version__</code>; o subpacote <code>_internal</code> é privado.</p>
+<div class="admonition warning">
+<p class="admonition-title">Mudança na 0.2.0</p>
+<p>Até a 0.1.x cada <em>reader</em> era <strong>também</strong> reexportado de forma plana na raiz. Isso foi removido:
+com seis macro-seções e ~105 datasets previstos, a raiz viraria uma lista de mais de cem nomes,
+exatamente o que a organização por seção existe para evitar.</p>
+</div>
 <h2 id="fazendo-esta-secao-crescer">Fazendo esta seção crescer<a class="headerlink" href="#fazendo-esta-secao-crescer" title="Permanent link">&para;</a></h2>
 <p>Isto é um <strong>diretório, não uma página única</strong>, de propósito. Uma referência de API cresce a cada
 unidade publicada, então um único <code>api.md</code> vira a maior página do repositório; dividi-la depois é

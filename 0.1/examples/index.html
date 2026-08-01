@@ -1187,9 +1187,8 @@ do pregão.</p>
 <p><strong>Veja também:</strong> <a href="../usage/">Uso</a> para o básico · <a href="../api/">Referência da API</a> para cada
 símbolo público.</p>
 </blockquote>
-<p>Os <em>readers</em> são importados pela sua <strong>macro-seção</strong> (<code>from filings_b3.daily_bulletin import …</code>), a
-forma organizada e preferida; a reexportação plana a partir da raiz (<code>from filings_b3 import …</code>)
-continua válida por retrocompatibilidade.</p>
+<p>Os <em>readers</em> são importados pela sua <strong>macro-seção</strong> (<code>from filings_b3.daily_bulletin import …</code>) —
+a única forma pública. A raiz do pacote não exporta <em>readers</em> desde a <strong>0.2.0</strong>.</p>
 <hr />
 <h2 id="receita-ler-as-posicoes-em-aberto-de-emprestimo-de-ativos-de-um-pregao">Receita: ler as posições em aberto de empréstimo de ativos de um pregão<a class="headerlink" href="#receita-ler-as-posicoes-em-aberto-de-emprestimo-de-ativos-de-um-pregao" title="Permanent link">&para;</a></h2>
 <p>Obtenha o retrato de fim de pregão das posições em aberto de BTB para um dia e inspecione as
