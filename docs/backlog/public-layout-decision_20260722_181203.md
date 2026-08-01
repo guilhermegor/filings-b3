@@ -113,7 +113,7 @@ Concretely: the current `Reader` body moves down into `daily_bulletin/_base_bdi_
 
 ## 3. Divergence 2 — `path_raw` is MANDATORY, family-wide
 
-Confirmed as a hard architectural requirement, not a nicety: bedrock-fm needs a **datalake**
+Confirmed as a hard architectural requirement, not a nicety: marketdata-fm needs a **datalake**
 of raw artifacts (bronze) and a **datawarehouse** of treated data (silver/gold), on S3-compatible
 object storage (open-source **rustfs** under consideration).
 
@@ -300,7 +300,7 @@ renaming it `example_meta_url` in the template. Left in place pending confirmati
 ## Note — `path_raw` was already a captured lesson, not a new finding
 
 `ingestion-reader-persists-raw-artifact.md` (filings-cvm, 2026-07-08) already specifies the whole
-convention, names bedrock-fm's medallion warehouse, and even names **rustfs**. The gap was not
+convention, names marketdata-fm's medallion warehouse, and even names **rustfs**. The gap was not
 knowledge but **delivery**: the lesson was never backported into the template, so filings-b3
 scaffolded without it and its reader used a bare `TemporaryDirectory`. Worth treating as evidence
 that a lesson without a template change and a harness check does not actually propagate.
