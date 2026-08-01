@@ -8,6 +8,13 @@ Template-Method base (``_base_pregao_reader``) built around download → locate 
 Includes the ``IN`` instruments file and its eight variants, ``PR`` (price report), ``IR``
 (index report), and the derivatives/equities/fee/FX families.
 
+**The instruments family is one download, nine readers.** ``IN{yymmdd}.zip`` holds a single
+BVBG.028.02 XML in which every ``<Instrm>`` record nests its type-specific fields under exactly
+one of 20 ``<InstrmInf>`` sub-blocks. :class:`InstrumentsFileReader` flattens every record on
+B3's published 52-column UP2DATA layout; each ``InstrumentsFile<Type>Reader`` keeps the records
+of one sub-block and maps that block's **complete** field list — more columns, one instrument
+type. They share ``_base_instruments_file_reader`` and therefore one lifecycle.
+
 Every concrete reader is public from this section path — ``from
 filings_b3.search_trading_session import InstrumentsFileReader``, the organised form — and
 re-exported flat from the package root (``from filings_b3 import InstrumentsFileReader``) as a
@@ -15,7 +22,36 @@ backward-compatible convenience.
 """
 
 from filings_b3.search_trading_session.instruments_file import InstrumentsFileReader
+from filings_b3.search_trading_session.instruments_file_adr import InstrumentsFileAdrReader
+from filings_b3.search_trading_session.instruments_file_btc import InstrumentsFileBtcReader
+from filings_b3.search_trading_session.instruments_file_eqty import InstrumentsFileEqtyReader
+from filings_b3.search_trading_session.instruments_file_eqty_fwd import (
+	InstrumentsFileEqtyFwdReader,
+)
+from filings_b3.search_trading_session.instruments_file_exrc_eqts import (
+	InstrumentsFileExrcEqtsReader,
+)
+from filings_b3.search_trading_session.instruments_file_fxd_incm import (
+	InstrumentsFileFxdIncmReader,
+)
+from filings_b3.search_trading_session.instruments_file_optn_on_eqts import (
+	InstrumentsFileOptnOnEqtsReader,
+)
+from filings_b3.search_trading_session.instruments_file_optn_on_spot_and_futures import (
+	InstrumentsFileOptnOnSpotAndFuturesReader,
+)
 from filings_b3.search_trading_session.instruments_layout_meta import InstrumentsLayoutMetaReader
 
 
-__all__ = ["InstrumentsFileReader", "InstrumentsLayoutMetaReader"]
+__all__ = [
+	"InstrumentsFileAdrReader",
+	"InstrumentsFileBtcReader",
+	"InstrumentsFileEqtyFwdReader",
+	"InstrumentsFileEqtyReader",
+	"InstrumentsFileExrcEqtsReader",
+	"InstrumentsFileFxdIncmReader",
+	"InstrumentsFileOptnOnEqtsReader",
+	"InstrumentsFileOptnOnSpotAndFuturesReader",
+	"InstrumentsFileReader",
+	"InstrumentsLayoutMetaReader",
+]

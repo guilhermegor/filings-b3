@@ -5,12 +5,19 @@ Reads B3's daily ``IN{yymmdd}.zip`` from ``www.b3.com.br/pesquisapregao/download
 equities, futures, options, gold, strategies and fixed income — one row per instrument.
 
 Unlike the CSV/ZIP datasets served by the section's tabular base (``_base_pregao_reader``), this
-source is **nested XML**, so the reader implements the
-:class:`~filings_b3._internal.config.ports.ingestion_reader.IngestionReader` port directly (as the
-port's docstring prescribes for a source that fits no tabular family), composing the same
-``_internal`` seams the base uses — download-with-retry, raw-artifact retention, provenance — but
-flattening the XML through :func:`~filings_b3._internal.utils.xml_reader.read_xml` instead of
+source is **nested XML**, so it rides
+:class:`~filings_b3.search_trading_session._base_instruments_file_reader._BaseInstrumentsFileReader`
+— the section-local base shared by every reader of this one file — which composes the same
+``_internal`` seams (download-with-retry, raw-artifact retention, provenance) but flattens
+through :func:`~filings_b3._internal.utils.xml_reader.read_xml` instead of
 :func:`~filings_b3._internal.utils.tabular_reader.read_table`.
+
+This reader is the **consolidated** projection: it spans every instrument type, so it sets
+``dict_full_paths`` (whole record-relative paths, wildcard included) and opts out of the base's
+common-block columns — its column set is pinned to B3's published UP2DATA layout by the
+contract-drift oracle, which would report any column the layout does not declare. The **per-type**
+readers (``instruments_file_adr`` and siblings) take the opposite deal: the base's common columns
+plus their own sub-block's complete field list.
 
 The 52 columns come from B3's authoritative ``BVBG.028 para UP2DATA`` layout (sheet
 ``InstrumentsConsolidatedFile``); their names are ``pascal_to_upper_snake`` of the BVBG.028 tag
@@ -33,34 +40,13 @@ record has no ``TckrSymb``) are legitimately null — the source has no such val
 
 from __future__ import annotations
 
-from datetime import date
-from pathlib import Path
-
-import pandas as pd
+from collections.abc import Mapping
 
 from filings_b3._internal.config.contracts import INSTRUMENTS_FILE
-from filings_b3._internal.config.ports.ingestion_reader import IngestionReader
-from filings_b3._internal.utils.provenance import (
-	hash_artifact,
-	resolve_package_version,
-	stamp_provenance,
+from filings_b3.search_trading_session._base_instruments_file_reader import (
+	_BaseInstrumentsFileReader,
 )
-from filings_b3._internal.utils.raw_workspace import raw_workspace
-from filings_b3._internal.utils.retry import LogEmitter, RetryPolicy
-from filings_b3._internal.utils.xml_reader import read_xml
-from filings_b3._internal.utils.zip_extractor import extract_all
-from filings_b3.search_trading_session._base_pregao_reader import PREGAO_DOWNLOAD_BASE
 
-
-_DISTRIBUTION_NAME = "filings-b3"
-
-# Local name of the repeating instrument-record element, confirmed against a live IN file:
-# BVBG.028 wraps each instrument in <Instrm> (not the guessed <InstrmRcrd>).
-_ROW_TAG = "Instrm"
-
-# No file-level scalars: RPT_DT is per-record (each <Instrm> carries its own <RptParams>), so it
-# lives in _DICT_PATHS below, not here.
-_DICT_SCALARS: dict[str, str] = {}
 
 # Column -> the element path relative to a record <Instrm>. A `*` segment is a single-level
 # wildcard matching whichever instrument sub-block the record carries (BVBG.028 nests each
@@ -142,15 +128,9 @@ _LIST_DECIMAL_COLS: tuple[str, ...] = (
 	"EXRC_PRIC",
 	"MKT_CPTLSTN",
 )
-# Text for every non-date, non-decimal column (fidelity: keep the source's exact string).
-_DICT_DTYPES: dict[str, str] = {
-	str_col: "str"
-	for str_col in (*_DICT_SCALARS, *_DICT_PATHS)
-	if str_col not in _LIST_DATE_COLS and str_col not in _LIST_DECIMAL_COLS
-}
 
 
-class InstrumentsFileReader(IngestionReader):
+class InstrumentsFileReader(_BaseInstrumentsFileReader):
 	"""Reader for B3's Pesquisa por Pregão consolidated instruments file (BVBG.028.02).
 
 	Downloads ``IN{yymmdd}.zip``, extracts its single XML member, flattens each instrument record
@@ -171,97 +151,13 @@ class InstrumentsFileReader(IngestionReader):
 		Injected retry/backoff schedule for the download; ``None`` uses the seam's own default.
 	"""
 
-	def __init__(
-		self,
-		date_ref: date,
-		path_raw: Path | None = None,
-		cls_logger: LogEmitter | None = None,
-		cls_retry_policy: RetryPolicy | None = None,
-	) -> None:
-		self.date_ref = date_ref
-		self.path_raw = path_raw
-		self._cls_logger = cls_logger if cls_logger is not None else LogEmitter()
-		self._cls_retry_policy = cls_retry_policy
-
-	def build_url(self) -> str:
-		"""Return the ``IN{yymmdd}.zip`` download URL for :attr:`date_ref`.
-
-		Returns
-		-------
-		str
-			The Pesquisa por Pregão download URL for the session's instruments file.
-		"""
-		return f"{PREGAO_DOWNLOAD_BASE}?filelist=IN{self.date_ref:%y%m%d}.zip"
-
-	def _locate_xml(self, path_download: Path, path_dir: Path) -> Path:
-		"""Extract the ZIP and return its single XML member.
-
-		Parameters
-		----------
-		path_download : pathlib.Path
-			The downloaded ``IN{yymmdd}.zip``.
-		path_dir : pathlib.Path
-			The workspace directory to extract into.
-
-		Returns
-		-------
-		pathlib.Path
-			The extracted XML file.
-
-		Raises
-		------
-		ValueError
-			If the archive does not contain exactly one ``.xml`` member (fail loudly rather than
-			guess which member to parse).
-		"""
-		list_xml = [
-			path_member
-			for path_member in extract_all(path_download, path_dir)
-			if path_member.suffix.lower() == ".xml"
-		]
-		if len(list_xml) != 1:
-			raise ValueError(
-				f"expected exactly one .xml member in {path_download.name}, "
-				f"found {[p.name for p in list_xml]}"
-			)
-		return list_xml[0]
-
-	def read(self) -> pd.DataFrame:
-		"""Fetch, flatten, and provenance-stamp the instruments file into a typed DataFrame.
-
-		Returns
-		-------
-		pd.DataFrame
-			The typed, contract-validated, provenance-stamped instrument rows.
-
-		Raises
-		------
-		ContractError
-			When the flattened frame violates :data:`INSTRUMENTS_FILE`.
-		ValueError
-			When the archive does not hold exactly one XML member.
-		"""
-		from filings_b3._internal.utils.http_downloader import download_file, url_filename
-
-		str_url = self.build_url()
-		with raw_workspace(self.path_raw) as path_dir:
-			path_download = download_file(str_url, path_dir / url_filename(str_url))
-			self._cls_logger.log_message(f"downloaded instruments_file from {str_url}", "info")
-			path_xml = self._locate_xml(path_download, path_dir)
-			df_typed = read_xml(
-				path_xml,
-				_ROW_TAG,
-				_DICT_PATHS,
-				_DICT_DTYPES,
-				INSTRUMENTS_FILE,
-				dict_scalars=_DICT_SCALARS,
-				list_date_cols=_LIST_DATE_COLS,
-				list_decimal_cols=_LIST_DECIMAL_COLS,
-			)
-			return stamp_provenance(
-				df_typed,
-				str_url,
-				INSTRUMENTS_FILE,
-				hash_artifact(path_download),
-				resolve_package_version(_DISTRIBUTION_NAME),
-			)
+	str_source_key = "instruments_file"
+	cls_contract = INSTRUMENTS_FILE
+	# This reader spans every instrument type, so it supplies whole record-relative paths
+	# including the wildcard, and takes none of the common-block columns the per-type readers
+	# inherit. Its column set is exactly B3's published UP2DATA layout, which the drift oracle
+	# checks column for column, so adding a column here would be reported as drift.
+	dict_full_paths = _DICT_PATHS
+	dict_common_paths: Mapping[str, str] = {}  # noqa: RUF012 - by convention, never mutated
+	list_date_cols = _LIST_DATE_COLS
+	list_decimal_cols = _LIST_DECIMAL_COLS

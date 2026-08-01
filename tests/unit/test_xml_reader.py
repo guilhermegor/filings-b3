@@ -148,3 +148,123 @@ def test_read_xml_star_wildcard_matches_any_sub_block(tmp_path: Path) -> None:
 	)
 
 	assert list(df_out["TICKER_SYMBOL"]) == ["PETR4", "DOLF25"]
+
+
+# A document whose records carry an ISO-20022 amount with its currency as an ATTRIBUTE, plus two
+# different sub-block types — the shape the per-type instruments readers project.
+_XML_ATTR = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="{_NS}">
+  <BizGrp>
+    <Instrm>
+      <RptParams><RptDtAndTm><Dt>2025-01-02</Dt></RptDtAndTm></RptParams>
+      <FinInstrmAttrCmon><Asst>PETR</Asst></FinInstrmAttrCmon>
+      <InstrmInf><EqtyInf><TckrSymb>PETR4</TckrSymb>
+        <MktCptlstn Ccy="BRL">123.45</MktCptlstn></EqtyInf></InstrmInf>
+    </Instrm>
+    <Instrm>
+      <RptParams><RptDtAndTm><Dt>2025-01-02</Dt></RptDtAndTm></RptParams>
+      <FinInstrmAttrCmon><Asst>AAPL</Asst></FinInstrmAttrCmon>
+      <InstrmInf><ADRInf><TckrSymb>AAPL34</TckrSymb>
+        <Ppsn Ccy="USD">2.5</Ppsn></ADRInf></InstrmInf>
+    </Instrm>
+  </BizGrp>
+</Document>
+"""
+
+
+def _write_attr(path_dir: Path) -> Path:
+	path_xml = path_dir / "instruments_attr.xml"
+	path_xml.write_text(_XML_ATTR, encoding="utf-8")
+	return path_xml
+
+
+def test_read_xml_row_filter_keeps_only_records_carrying_the_block(tmp_path: Path) -> None:
+	"""``str_row_filter`` projects one instrument type out of a heterogeneous file.
+
+	The row anchor stays on the full ``<Instrm>`` record, so the per-record report date and
+	common attributes — which live *outside* the sub-block — still resolve for the kept rows.
+	"""
+	cls_contract = FileContract("Test", "test", ("TICKER_SYMBOL", "ASSET"), ())
+
+	df_out = read_xml(
+		_write_attr(tmp_path),
+		"Instrm",
+		{
+			"TICKER_SYMBOL": ("InstrmInf/ADRInf/TckrSymb",),
+			"ASSET": ("FinInstrmAttrCmon/Asst",),
+			"REPORT_DATE": ("RptParams/RptDtAndTm/Dt",),
+		},
+		{"TICKER_SYMBOL": "str", "ASSET": "str"},
+		cls_contract,
+		list_date_cols=("REPORT_DATE",),
+		str_row_filter="InstrmInf/ADRInf",
+	)
+
+	assert list(df_out["TICKER_SYMBOL"]) == ["AAPL34"]
+	assert list(df_out["ASSET"]) == ["AAPL"]
+	# Reached from the record, not the sub-block — the filter did not narrow the row anchor.
+	assert list(df_out["REPORT_DATE"]) == [date(2025, 1, 2)]
+
+
+def test_read_xml_row_filter_applies_before_contract_validation(tmp_path: Path) -> None:
+	"""Filtering precedes validation, keeping other types out of this dataset's frame.
+
+	Without the filter the equity record would leave ``PROPORTION`` null and a contract
+	requiring it would still pass (presence, not nullity) — but the frame would carry a row
+	that does not belong to this dataset at all.
+	"""
+	cls_contract = FileContract("Test", "test", ("PROPORTION",), ())
+
+	df_out = read_xml(
+		_write_attr(tmp_path),
+		"Instrm",
+		{"PROPORTION": ("InstrmInf/ADRInf/Ppsn",)},
+		{},
+		cls_contract,
+		list_decimal_cols=("PROPORTION",),
+		str_row_filter="InstrmInf/ADRInf",
+	)
+
+	assert len(df_out) == 1
+	assert df_out.loc[0, "PROPORTION"] == Decimal("2.5")
+	assert not df_out["PROPORTION"].isna().any()
+
+
+def test_read_xml_reads_an_attribute_with_an_at_segment(tmp_path: Path) -> None:
+	"""A trailing ``@name`` segment reads an attribute — ISO-20022 puts an amount's currency there.
+
+	Without this the currency of every monetary column would be unrecoverable from the frame.
+	"""
+	cls_contract = FileContract("Test", "test", ("PROPORTION", "PROPORTION_CCY"), ())
+
+	df_out = read_xml(
+		_write_attr(tmp_path),
+		"Instrm",
+		{
+			"PROPORTION": ("InstrmInf/ADRInf/Ppsn",),
+			"PROPORTION_CCY": ("InstrmInf/ADRInf/Ppsn/@Ccy",),
+		},
+		{"PROPORTION_CCY": "str"},
+		cls_contract,
+		list_decimal_cols=("PROPORTION",),
+		str_row_filter="InstrmInf/ADRInf",
+	)
+
+	assert df_out.loc[0, "PROPORTION"] == Decimal("2.5")
+	assert df_out.loc[0, "PROPORTION_CCY"] == "USD"
+
+
+def test_read_xml_attribute_is_none_when_absent(tmp_path: Path) -> None:
+	"""An ``@name`` segment naming an attribute the element does not carry yields ``None``."""
+	cls_contract = FileContract("Test", "test", (), ())
+
+	df_out = read_xml(
+		_write_attr(tmp_path),
+		"Instrm",
+		{"MISSING": ("InstrmInf/ADRInf/Ppsn/@Nope",)},
+		{"MISSING": "str"},
+		cls_contract,
+		str_row_filter="InstrmInf/ADRInf",
+	)
+
+	assert df_out["MISSING"].isna().all()
