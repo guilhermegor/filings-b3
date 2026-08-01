@@ -6,9 +6,8 @@ do pregão.
 > **Veja também:** [Uso](usage.md) para o básico · [Referência da API](api/index.md) para cada
 > símbolo público.
 
-Os _readers_ são importados pela sua **macro-seção** (`from filings_b3.daily_bulletin import …`), a
-forma organizada e preferida; a reexportação plana a partir da raiz (`from filings_b3 import …`)
-continua válida por retrocompatibilidade.
+Os _readers_ são importados pela sua **macro-seção** (`from filings_b3.daily_bulletin import …`) —
+a única forma pública. A raiz do pacote não exporta _readers_ desde a **0.2.0**.
 
 ---
 

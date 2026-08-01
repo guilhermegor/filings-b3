@@ -12,7 +12,7 @@ declaration, not an implementation.
 Usage::
 
     from datetime import date
-    from filings_b3 import BdiStocksSummaryReader
+    from filings_b3.daily_bulletin import BdiStocksSummaryReader
 
     df = BdiStocksSummaryReader(date(2025, 1, 2)).read()
 

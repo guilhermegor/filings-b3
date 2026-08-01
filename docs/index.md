@@ -24,7 +24,7 @@ pip install filings-b3
 
 ```python
 from datetime import date
-from filings_b3 import BdiBtbLendingOpenPositionsReader
+from filings_b3.daily_bulletin import BdiBtbLendingOpenPositionsReader
 
 df = BdiBtbLendingOpenPositionsReader(date(2025, 1, 2)).read()
 ```
