@@ -1052,7 +1052,7 @@ então não recebe <code>date_ref</code>.</p>
 <h3 id="dois-usos">Dois usos<a class="headerlink" href="#dois-usos" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Snapshot para <em>datalake</em></strong> — um registro versionável do layout que a B3 publica, com proveniência
-  e <code>content_hash</code>, para que o <em>datalake</em> (bedrock-fm) guarde o histórico de como a especificação
+  e <code>content_hash</code>, para que o <em>datalake</em> consumidor guarde o histórico de como a especificação
   mudou ao longo do tempo.</li>
 <li><strong>Oráculo de deriva de contrato</strong> — o job semanal <code>bin/check_contract_drift.py</code> lê o conjunto
   <code>CANONICAL_COLUMN</code> e o compara com o que o <a href="../instruments_file/"><em>reader</em> de instrumentos</a> mapeia.</li>
