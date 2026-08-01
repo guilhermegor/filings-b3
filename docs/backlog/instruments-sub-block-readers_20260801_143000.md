@@ -12,8 +12,8 @@ Branch: `feat/69-77-instruments-sub-block-readers`. Closes #69, #70, #71, #72, #
 - [x] Public API (section + root `__all__`), boundary-gate snapshots, contracts aggregators
 - [x] Docs: 8 pt-BR API pages + section index + `mkdocs.yml` nav + README section
 - [x] Unit tests: seam (filter/attribute) + family invariants; full suite green
-- [ ] Live reconcile against the real `IN260729.zip` — running, see "Validation"
-- [ ] `mkdocs --strict` + full static gates before PR
+- [x] Live reconcile against the real `IN260729.zip` — **8/8 exact, 0 failures**
+- [x] `mkdocs --strict` + full static gates before PR
 
 ## Scope correction — #75 is a different file
 
@@ -100,12 +100,30 @@ strategy legs. No observed record in `IN260729` has more than one; revisit if on
 
 ## Validation
 
-- Full suite green before the live run (237 passed, +44 new family tests, +5 new seam tests).
-- Live reconcile: each reader run against the real `IN260729.zip` through its own configuration,
-  asserting row counts against an independent sub-block census and that no contract-required
-  column is null. Expected counts: `OptnOnEqtsInf` 133,875 · `EqtyInf` 14,479 · `ExrcEqtsInf`
-  14,477 · `OptnOnSpotAndFutrsInf` 8,289 · `EqtyFwdInf` 676 · `FxdIncmInf` 424 · `ADRInf` 31 ·
-  `BTCInf` 7.
+- Full suite **293 passed** (was 237 on `main`); `ruff check`/`format` clean; `mypy src` clean;
+  `mkdocs build --strict` clean.
+- **Live reconcile — 8/8 exact, `failures=0`.** Each reader was run against the real
+  `IN260729.zip` through its own configuration (row filter, paths, contract, dtypes), asserting
+  the row count against an independent `iterparse` census of the sub-blocks and that no
+  contract-required column is null on any row:
+
+  | Reader | Rows (got/expected) | Source columns |
+  |---|---|---|
+  | `InstrumentsFileOptnOnEqtsReader` | 133,875 / 133,875 | 41 |
+  | `InstrumentsFileEqtyReader` | 14,479 / 14,479 | 50 |
+  | `InstrumentsFileExrcEqtsReader` | 14,477 / 14,477 | 23 |
+  | `InstrumentsFileOptnOnSpotAndFuturesReader` | 8,289 / 8,289 | 41 |
+  | `InstrumentsFileEqtyFwdReader` | 676 / 676 | 31 |
+  | `InstrumentsFileFxdIncmReader` | 424 / 424 | 26 |
+  | `InstrumentsFileAdrReader` | 31 / 31 | 22 |
+  | `InstrumentsFileBtcReader` | 7 / 7 | 17 |
+
+- Columns that came back all-null are **legitimately absent**, not resolution misses:
+  `EqtyFwdInf.TRGT_INSTRM_ID*` (the `[0..*]` container is never populated for forwards) and
+  `OptnOnSpotAndFutrsInf.PURE_GOLD_WGHT` (gold weight does not apply to these contracts). Both
+  are optional in the taxonomy and mapped so they fill in the day B3 populates them.
+- The fixture itself cannot ship (660 MB), so the suite pins the family's *invariants* and this
+  ledger records the reconciliation.
 
 ## Open / follow-ups
 
