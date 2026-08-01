@@ -24,7 +24,7 @@ downloadable **layout spreadsheet**, not a CKAN META endpoint).
   into a typed **layout snapshot**: one row per field with `COLUMN_ORDER`, `FIELD_NAME`,
   `FIELD_ABBREVIATION`, `CANONICAL_COLUMN` (`pascal_to_upper_snake` of the tag abbreviation),
   `CARDINALITY`, `DATA_TYPE`, `BVBG_PATH` + provenance (incl. `content_hash`). The datalake snapshot
-  for bedrock-fm. Reuses the tabular seam (XLSX is tabular). Contract `INSTRUMENTS_LAYOUT_META`.
+  for marketdata-fm. Reuses the tabular seam (XLSX is tabular). Contract `INSTRUMENTS_LAYOUT_META`.
 - **`bin/check_contract_drift.py`** — REPLACED the dead scaffold stub (it imported `from config
   import contracts` / a `contract_oracles.yaml` that never existed under the `filings_b3._internal`
   layout, wired into nothing — see git `8b41881 first commit`). The new one is layout-aware:

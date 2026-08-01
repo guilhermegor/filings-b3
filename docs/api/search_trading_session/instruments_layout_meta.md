@@ -28,7 +28,7 @@ então não recebe `date_ref`.
 ### Dois usos
 
 - **Snapshot para _datalake_** — um registro versionável do layout que a B3 publica, com proveniência
-  e `content_hash`, para que o _datalake_ (bedrock-fm) guarde o histórico de como a especificação
+  e `content_hash`, para que o _datalake_ consumidor guarde o histórico de como a especificação
   mudou ao longo do tempo.
 - **Oráculo de deriva de contrato** — o job semanal `bin/check_contract_drift.py` lê o conjunto
   `CANONICAL_COLUMN` e o compara com o que o [_reader_ de instrumentos](instruments_file.md) mapeia.
