@@ -26,9 +26,10 @@ from filings_b3.search_trading_session._base_instruments_file_reader import (
 
 
 # Column to path, relative to the <EqtyFwdInf> sub-block. Generated from B3's BVBG.028
-# taxonomy and confirmed against a real IN file. A name is qualified by its parent only where
-# the bare leaf would collide, since a block's own UndrlygInstrmId and TrgtInstrmId references
-# repeat the ISO-20022 identification shape of the record itself.
+# taxonomy and confirmed against a real IN file. A leaf reached THROUGH a reference container
+# (UndrlygInstrmId, TrgtInstrmId, AsstSttlmInd) is always qualified by that container, because
+# those references repeat the ISO-20022 identification shape of the record itself — so a bare
+# Tp/Prtry would be one field wearing a different name in every reader of this one file (#165).
 _DICT_PATHS: dict[str, str] = {
 	"ALLCN_RND_LOT": "AllcnRndLot",
 	"CFICD": "CFICd",
