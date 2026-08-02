@@ -689,13 +689,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#um-download-nove-readers" class="md-nav__link">
+  <a href="#um-download-dezoito-readers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Um download, nove readers
+        Um download, dezoito readers
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Um download, dezoito readers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memoria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memória
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1424,13 +1441,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#um-download-nove-readers" class="md-nav__link">
+  <a href="#um-download-dezoito-readers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Um download, nove readers
+        Um download, dezoito readers
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Um download, dezoito readers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memoria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memória
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1539,7 +1573,7 @@ que <strong>não</strong> cabe nessa forma — a família <code>instruments_file
 <code>_base_instruments_file_reader</code>, que implementa o <em>port</em> <code>IngestionReader</code> diretamente,
 reaproveitando os mesmos <em>seams</em> internos (download com <em>retry</em>, retenção do artefato bruto,
 proveniência), mas achatando o XML pelo <em>seam</em> <code>xml_reader</code> em vez de ler uma tabela.</p>
-<h3 id="um-download-nove-readers">Um download, nove <em>readers</em><a class="headerlink" href="#um-download-nove-readers" title="Permanent link">&para;</a></h3>
+<h3 id="um-download-dezoito-readers">Um download, dezoito <em>readers</em><a class="headerlink" href="#um-download-dezoito-readers" title="Permanent link">&para;</a></h3>
 <p>O <code>IN{aammdd}.zip</code> traz <strong>um</strong> XML em que cada registro <code>&lt;Instrm&gt;</code> aninha os seus campos
 específicos sob <strong>exatamente um</strong> de 20 blocos <code>&lt;InstrmInf&gt;</code>. Daí duas formas de ler o mesmo
 arquivo:</p>
@@ -1592,6 +1626,31 @@ mantém os <em>frames</em> por tipo comparáveis entre si.</p>
 </tr>
 </tbody>
 </table>
+<h4 id="memoria">Memória<a class="headerlink" href="#memoria" title="Permanent link">&para;</a></h4>
+<p>O XML é lido em <strong><em>stream</em></strong>: cada registro é projetado e liberado em seguida, então o pico de
+memória acompanha as <strong>linhas mantidas</strong>, não o tamanho do arquivo. Medido contra um <code>IN260729</code>
+real (660 MB, 183.164 registros):</p>
+<table>
+<thead>
+<tr>
+<th>Leitura</th>
+<th style="text-align: right;">Pico</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>um bloco pequeno (ex.: <code>FICInf</code>, 2 linhas)</td>
+<td style="text-align: right;">~1,13 GB</td>
+</tr>
+<tr>
+<td><code>InstrumentsFileReader</code> (todos os 183.164 registros)</td>
+<td style="text-align: right;">~1,86 GB</td>
+</tr>
+</tbody>
+</table>
+<p>Até a 0.3.0 a árvore inteira era materializada e <strong>qualquer</strong> leitura custava ~3,0–3,6 GB — uma
+projeção de duas linhas pagava o arquivo todo. Ainda assim, contar com ~2 GB disponíveis é o
+mínimo razoável para ler este arquivo.</p>
 <hr />
 <h2 id="colunas-de-proveniencia">Colunas de proveniência<a class="headerlink" href="#colunas-de-proveniencia" title="Permanent link">&para;</a></h2>
 <p>Todo <code>DataFrame</code> devolvido carrega, <strong>ao lado</strong> das colunas de origem, seis colunas de
