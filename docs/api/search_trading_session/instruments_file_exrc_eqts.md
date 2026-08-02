@@ -22,6 +22,14 @@ O layout vem da **taxonomia** autoritativa da B3 (`BVBG.028 para UP2DATA`, aba
 contra um arquivo `IN` real. Os nomes seguem a convenção da biblioteca:
 `pascal_to_upper_snake` da abreviação do _tag_.
 
+!!! warning "Mudança incompatível na 0.3.0 — `TP` virou `OPTN_EXRC_INSTRM_ID_TP`"
+    Até a 0.2.1 este _reader_ publicava `OptnExrcInstrmId/OthrId/Tp/Prtry` como **`TP`** — o mesmo
+    nome que outros dois _readers_ da família davam a campos **diferentes**, de modo que empilhar
+    os quadros fundia silenciosamente três campos sem relação
+    ([#165](https://github.com/guilhermegor/filings-b3/issues/165)). **Migração:** renomeie `TP`
+    para `OPTN_EXRC_INSTRM_ID_TP` no seu consumo. O caminho de origem e os valores não mudaram —
+    só o nome da coluna.
+
 O contrato exige `ASST`, `ASST_DESC`, `DLVRY_TP_NM`, `MKT_IDR_CD`, `MKT_NM`, `OTHR_ID`, `RPT_DT`, `SCTY_CTGY_NM`, `SGMT_NM`, `TCKR_SYMB`, `TRADG_CCY`. Os campos `[0..1]` do bloco fluem como colunas tipadas sem serem
 obrigatórios, de modo que um pregão em que a B3 não preencha um campo opcional ainda é lido.
 

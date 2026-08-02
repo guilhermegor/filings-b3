@@ -166,6 +166,53 @@ def test_each_reader_projects_a_distinct_sub_block() -> None:
 	assert len(set(list_blocks)) == len(list_blocks)
 
 
+def test_one_source_path_carries_exactly_one_column_name_across_the_family() -> None:
+	"""A field must not wear two names across readers of the **same** file.
+
+	Regression for #165: ``UndrlygInstrmId/OthrId/Tp/Prtry`` shipped as ``UNDRLYG_INSTRM_ID_TP`` in
+	four readers and as bare ``TP`` in a fifth, from 0.1.5 to 0.2.1. No per-reader test could see
+	it — each reader is internally consistent, so the whole suite stayed green while a consumer's
+	``UNION ALL`` over the family split one field into two columns, one of them almost always null.
+	The convention was written down; only an executable gate keeps it true.
+	"""
+	dict_names: dict[str, set[str]] = {}
+	for cls_reader, _, _ in _SUB_BLOCK_READERS:
+		for str_col, str_path in cls_reader(_DATE_REF).dict_own_paths.items():
+			dict_names.setdefault(str_path, set()).add(str_col)
+
+	dict_clashes = {
+		str_path: sorted(set_cols)
+		for str_path, set_cols in dict_names.items()
+		if len(set_cols) > 1
+	}
+
+	assert not dict_clashes, f"one path, several column names: {dict_clashes}"
+
+
+def test_one_column_name_resolves_to_exactly_one_source_path() -> None:
+	"""The converse of #165: two different fields must not share one column name.
+
+	``TP`` was the worse half of that bug — it named ``UndrlygInstrmId/OthrId/Tp/Prtry`` in one
+	reader, ``OptnExrcInstrmId/OthrId/Tp/Prtry`` in another and the genuine ``Tp`` leaf of
+	``IntlBdInf`` in a third. Stacking those frames silently merges three unrelated fields.
+
+	A name is allowed to repeat across readers only when it means the *same* source path — which is
+	exactly what makes the family joinable.
+	"""
+	dict_paths_by_col: dict[str, set[str]] = {}
+	for cls_reader, _, _ in _SUB_BLOCK_READERS:
+		for str_col, str_path in cls_reader(_DATE_REF).dict_own_paths.items():
+			dict_paths_by_col.setdefault(str_col, set()).add(str_path)
+
+	dict_clashes = {
+		str_col: sorted(set_paths)
+		for str_col, set_paths in dict_paths_by_col.items()
+		if len(set_paths) > 1
+	}
+
+	assert not dict_clashes, f"one column name, several paths: {dict_clashes}"
+
+
 def test_currency_attribute_columns_accompany_their_amount() -> None:
 	"""A monetary column mapped from an ISO-20022 amount carries its ``Ccy`` attribute.
 

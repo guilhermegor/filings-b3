@@ -95,6 +95,18 @@ Cada _reader_ é importado pela sua **macro-seção** (`filings_b3.daily_bulleti
 `filings_b3.search_trading_session`, …) — a única forma pública. A raiz do pacote não exporta
 _readers_.
 
+> ⚠️ **Mudança na 0.3.0** — duas colunas do arquivo de instrumentos foram **renomeadas**, porque um
+> mesmo campo vinha publicado com dois nomes diferentes entre _readers_ do mesmo arquivo, quebrando
+> um `UNION ALL` sobre a família ([#165](https://github.com/guilhermegor/filings-b3/issues/165)).
+> Só o **nome da coluna** mudou — caminho de origem e valores são os mesmos.
+>
+> | Reader | Antes | Agora |
+> |---|---|---|
+> | `InstrumentsFileFxdIncmReader` | `TP` | `UNDRLYG_INSTRM_ID_TP` |
+> | `InstrumentsFileExrcEqtsReader` | `TP` | `OPTN_EXRC_INSTRM_ID_TP` |
+>
+> O `TP` de `InstrumentsFileIntlBdReader` **não** muda: ali é o _tag_ `Tp` de verdade do bloco.
+
 > ⚠️ **Mudança na 0.2.0** — até a 0.1.x cada _reader_ também era reexportado de forma plana na raiz
 > (`from filings_b3 import BdiBtbLendingOpenPositionsReader`). Isso **foi removido**: com seis
 > macro-seções e ~105 datasets previstos, a raiz viraria uma lista de mais de cem nomes. Troque o
