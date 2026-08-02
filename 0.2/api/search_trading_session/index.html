@@ -1005,6 +1005,258 @@
   
   
     <li class="md-nav__item">
+      <a href="instruments_file_futr_ctrcts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Contratos futuros
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_drvs_optn_exrc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Exercício de opções sobre derivativos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_strtgy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Estratégias
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_ntl_bd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Títulos públicos nacionais
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_intl_bd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Títulos internacionais
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_fxd_incm_non_trdbl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Renda fixa não negociável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_otc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Balcão (OTC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_csh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Disponível (cash)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="instruments_file_fic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instrumentos — Fundos de investimento (FIC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="instruments_layout_meta/" class="md-nav__link">
         
   
@@ -1254,15 +1506,24 @@
 <li><strong><a href="instruments_file/">Arquivo de instrumentos (BVBG.028.02)</a></strong> — <code>InstrumentsFileReader</code>: lê o
   <code>IN{aammdd}.zip</code> do pregão (um XML ISO-20022 <code>InstrumentReport</code>) e devolve uma linha por
   instrumento registrado — ações, futuros, opções, ouro, estratégias e renda fixa — achatando os
-  blocos específicos de cada tipo num único <em>frame</em>. Inaugura esta seção e é a base da família de 9
+  blocos específicos de cada tipo num único <em>frame</em>. Inaugura esta seção e é a base da família de 18
   variantes de instrumentos.</li>
-<li><strong>Instrumentos por tipo</strong> — oito <em>readers</em> que leem o <strong>mesmo</strong> <code>IN{aammdd}.zip</code> e projetam <strong>um</strong>
-  bloco <code>InstrmInf</code> cada, com a lista <strong>completa</strong> de campos que a B3 declara para aquele tipo:
+<li><strong>Instrumentos por tipo</strong> — dezessete <em>readers</em> que leem o <strong>mesmo</strong> <code>IN{aammdd}.zip</code> e projetam
+  <strong>um</strong> bloco <code>InstrmInf</code> cada, com a lista <strong>completa</strong> de campos que a B3 declara para aquele
+  tipo:
   <a href="instruments_file_eqty/">Ações</a> · <a href="instruments_file_optn_on_eqts/">Opções sobre ações</a> ·
   <a href="instruments_file_optn_on_spot_and_futures/">Opções sobre disponível e futuros</a> ·
   <a href="instruments_file_exrc_eqts/">Exercício de opções sobre ações</a> ·
   <a href="instruments_file_eqty_fwd/">Termo de ações</a> · <a href="instruments_file_fxd_incm/">Renda fixa</a> ·
-  <a href="instruments_file_adr/">ADRs</a> · <a href="instruments_file_btc/">BTC</a>.</li>
+  <a href="instruments_file_adr/">ADRs</a> · <a href="instruments_file_btc/">BTC</a> ·
+  <a href="instruments_file_futr_ctrcts/">Contratos futuros</a> ·
+  <a href="instruments_file_drvs_optn_exrc/">Exercício de opções sobre derivativos</a> ·
+  <a href="instruments_file_strtgy/">Estratégias</a> ·
+  <a href="instruments_file_ntl_bd/">Títulos públicos nacionais</a> ·
+  <a href="instruments_file_intl_bd/">Títulos internacionais</a> ·
+  <a href="instruments_file_fxd_incm_non_trdbl/">Renda fixa não negociável</a> ·
+  <a href="instruments_file_otc/">Balcão (OTC)</a> · <a href="instruments_file_csh/">Disponível (cash)</a> ·
+  <a href="instruments_file_fic/">Fundos de investimento (FIC)</a>.</li>
 <li><strong><a href="instruments_layout_meta/">Metadados de layout (BVBG.028 UP2DATA)</a></strong> —
   <code>InstrumentsLayoutMetaReader</code>: baixa a planilha autoritativa de layout da B3 e devolve um <em>snapshot</em>
   tipado dos campos declarados (para o <em>datalake</em> e para o job semanal de deriva de contrato).</li>
