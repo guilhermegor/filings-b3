@@ -1488,6 +1488,15 @@ referência, identificação e atributos comuns), totalizando <strong>23</strong
 <code>BVBG.028 - Taxonomia</code>) — a árvore completa de <em>tags</em> com cardinalidade e tipo XSD — conferida
 contra um arquivo <code>IN</code> real. Os nomes seguem a convenção da biblioteca:
 <code>pascal_to_upper_snake</code> da abreviação do <em>tag</em>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Mudança incompatível na 0.3.0 — <code>TP</code> virou <code>OPTN_EXRC_INSTRM_ID_TP</code></p>
+<p>Até a 0.2.1 este <em>reader</em> publicava <code>OptnExrcInstrmId/OthrId/Tp/Prtry</code> como <strong><code>TP</code></strong> — o mesmo
+nome que outros dois <em>readers</em> da família davam a campos <strong>diferentes</strong>, de modo que empilhar
+os quadros fundia silenciosamente três campos sem relação
+(<a href="https://github.com/guilhermegor/filings-b3/issues/165">#165</a>). <strong>Migração:</strong> renomeie <code>TP</code>
+para <code>OPTN_EXRC_INSTRM_ID_TP</code> no seu consumo. O caminho de origem e os valores não mudaram —
+só o nome da coluna.</p>
+</div>
 <p>O contrato exige <code>ASST</code>, <code>ASST_DESC</code>, <code>DLVRY_TP_NM</code>, <code>MKT_IDR_CD</code>, <code>MKT_NM</code>, <code>OTHR_ID</code>, <code>RPT_DT</code>, <code>SCTY_CTGY_NM</code>, <code>SGMT_NM</code>, <code>TCKR_SYMB</code>, <code>TRADG_CCY</code>. Os campos <code>[0..1]</code> do bloco fluem como colunas tipadas sem serem
 obrigatórios, de modo que um pregão em que a B3 não preencha um campo opcional ainda é lido.</p>
 <table>
