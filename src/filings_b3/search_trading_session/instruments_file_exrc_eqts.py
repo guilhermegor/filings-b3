@@ -26,17 +26,18 @@ from filings_b3.search_trading_session._base_instruments_file_reader import (
 
 
 # Column to path, relative to the <ExrcEqtsInf> sub-block. Generated from B3's BVBG.028
-# taxonomy and confirmed against a real IN file. A name is qualified by its parent only where
-# the bare leaf would collide, since a block's own UndrlygInstrmId and TrgtInstrmId references
-# repeat the ISO-20022 identification shape of the record itself.
+# taxonomy and confirmed against a real IN file. A leaf reached THROUGH a reference container
+# (OptnExrcInstrmId here) is always qualified by that container, because those references repeat
+# the ISO-20022 identification shape of the record itself — so a bare Tp/Prtry would be one field
+# wearing a different name in every reader of this one file (#165).
 _DICT_PATHS: dict[str, str] = {
 	"DLVRY_TP_NM": "DlvryTp",
 	"ISIN": "ISIN",
 	"OPTN_EXRC_INSTRM_ID": "OptnExrcInstrmId/OthrId/Id",
+	"OPTN_EXRC_INSTRM_ID_TP": "OptnExrcInstrmId/OthrId/Tp/Prtry",
 	"OPTN_EXRC_INSTRM_ID_MKT_IDR_CD": "OptnExrcInstrmId/PlcOfListg/MktIdrCd",
 	"SCTY_CTGY_NM": "SctyCtgy",
 	"TCKR_SYMB": "TckrSymb",
-	"TP": "OptnExrcInstrmId/OthrId/Tp/Prtry",
 	"TRADG_CCY": "TradgCcy",
 	"TRADG_END_DT": "TradgEndDt",
 	"TRADG_START_DT": "TradgStartDt",

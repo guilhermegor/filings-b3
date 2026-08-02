@@ -22,7 +22,15 @@ O layout vem da **taxonomia** autoritativa da B3 (`BVBG.028 para UP2DATA`, aba
 contra um arquivo `IN` real. Os nomes seguem a convenção da biblioteca:
 `pascal_to_upper_snake` da abreviação do _tag_.
 
-O contrato exige `ALLCN_RND_LOT`, `ASST`, `ASST_DESC`, `DAYS_TO_STTLM`, `MKT_IDR_CD`, `MKT_NM`, `OTHR_ID`, `PMT_TP`, `PRIC_FCTR`, `RPT_DT`, `SCTY_CTGY_NM`, `SGMT_NM`, `TCKR_SYMB`, `TP`, `TRADG_CCY`, `UNDRLYG_INSTRM_ID`, `UNDRLYG_INSTRM_ID_MKT_IDR_CD`. Os campos `[0..1]` do bloco fluem como colunas tipadas sem serem
+!!! warning "Mudança incompatível na 0.3.0 — `TP` virou `UNDRLYG_INSTRM_ID_TP`"
+    Até a 0.2.1 este _reader_ publicava `UndrlygInstrmId/OthrId/Tp/Prtry` como **`TP`**, enquanto
+    os outros quatro _readers_ que mapeiam o mesmo campo o publicavam como
+    **`UNDRLYG_INSTRM_ID_TP`** — um campo com dois nomes no mesmo arquivo, o que quebrava um
+    `UNION ALL` sobre a família ([#165](https://github.com/guilhermegor/filings-b3/issues/165)).
+    **Migração:** renomeie `TP` para `UNDRLYG_INSTRM_ID_TP` no seu consumo. O caminho de origem e
+    os valores não mudaram — só o nome da coluna.
+
+O contrato exige `ALLCN_RND_LOT`, `ASST`, `ASST_DESC`, `DAYS_TO_STTLM`, `MKT_IDR_CD`, `MKT_NM`, `OTHR_ID`, `PMT_TP`, `PRIC_FCTR`, `RPT_DT`, `SCTY_CTGY_NM`, `SGMT_NM`, `TCKR_SYMB`, `TRADG_CCY`, `UNDRLYG_INSTRM_ID`, `UNDRLYG_INSTRM_ID_TP`, `UNDRLYG_INSTRM_ID_MKT_IDR_CD`. Os campos `[0..1]` do bloco fluem como colunas tipadas sem serem
 obrigatórios, de modo que um pregão em que a B3 não preencha um campo opcional ainda é lido.
 
 | Tipagem | Colunas |
