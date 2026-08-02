@@ -51,7 +51,7 @@ que **não** cabe nessa forma — a família `instruments_file`, que é **XML an
 reaproveitando os mesmos _seams_ internos (download com _retry_, retenção do artefato bruto,
 proveniência), mas achatando o XML pelo _seam_ `xml_reader` em vez de ler uma tabela.
 
-### Um download, nove _readers_
+### Um download, dezoito _readers_
 
 O `IN{aammdd}.zip` traz **um** XML em que cada registro `<Instrm>` aninha os seus campos
 específicos sob **exatamente um** de 20 blocos `<InstrmInf>`. Daí duas formas de ler o mesmo
@@ -77,6 +77,21 @@ Reader.read() -> pandas.DataFrame
 |-----------|------|-------------|
 | `date_ref` | `datetime.date` | Pregão a ler. **Obrigatório** — o endpoint é endereçado por data. |
 | `path_raw` | `pathlib.Path`, opcional | Diretório onde **manter** o artefato bruto baixado (camada _bronze_ do _datalake_). `None` (padrão) usa um diretório temporário removido ao final. |
+
+#### Memória
+
+O XML é lido em **_stream_**: cada registro é projetado e liberado em seguida, então o pico de
+memória acompanha as **linhas mantidas**, não o tamanho do arquivo. Medido contra um `IN260729`
+real (660 MB, 183.164 registros):
+
+| Leitura | Pico |
+|---|---:|
+| um bloco pequeno (ex.: `FICInf`, 2 linhas) | ~1,13 GB |
+| `InstrumentsFileReader` (todos os 183.164 registros) | ~1,86 GB |
+
+Até a 0.3.0 a árvore inteira era materializada e **qualquer** leitura custava ~3,0–3,6 GB — uma
+projeção de duas linhas pagava o arquivo todo. Ainda assim, contar com ~2 GB disponíveis é o
+mínimo razoável para ler este arquivo.
 
 ---
 

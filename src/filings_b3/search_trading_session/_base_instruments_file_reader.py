@@ -31,10 +31,10 @@ not a tabular member — the case that base's docstring defers to the port.
 (``OTHR_ID``, ``OTHR_ID_TP``, ``INSTRM_DESC``) — a bare ``ID`` or ``DESC`` column would be
 meaningless in a datalake, and ``DESC`` is a reserved word in most SQL engines.
 
-# ponytail: read_xml parses the whole tree — the real IN file is ~660 MB (~4 GB resident), so a
-# per-type read costs the same memory as the consolidated one even when it keeps 31 rows. Fine
-# on a workstation; switch read_xml to an iterparse stream keyed on the row tag if a
-# memory-constrained consumer needs it (tracked as a follow-up from #143).
+**Memory scales with the rows kept, not the file size** (#167). ``read_xml`` streams the document
+and releases each record once projected, so a per-type read no longer pays for the whole 660 MB
+artifact: measured against a real ``IN260729``, a 2-row ``FICInf`` read peaks at ~1.13 GB against
+the consolidated reader's ~1.86 GB, where both previously cost ~3.0–3.6 GB.
 """
 
 from __future__ import annotations
