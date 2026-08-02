@@ -5,10 +5,10 @@ this is the library's largest macro-section, and every member is a genuine **fil
 (mostly ZIPs holding one or more tabular members), which is why it carries a section-local
 Template-Method base (``_base_pregao_reader``) built around download → locate member → read.
 
-Includes the ``IN`` instruments file and its eight variants, ``PR`` (price report), ``IR``
+Includes the ``IN`` instruments file and its seventeen variants, ``PR`` (price report), ``IR``
 (index report), and the derivatives/equities/fee/FX families.
 
-**The instruments family is one download, nine readers.** ``IN{yymmdd}.zip`` holds a single
+**The instruments family is one download, eighteen readers.** ``IN{yymmdd}.zip`` holds a single
 BVBG.028.02 XML in which every ``<Instrm>`` record nests its type-specific fields under exactly
 one of 20 ``<InstrmInf>`` sub-blocks. :class:`InstrumentsFileReader` flattens every record on
 B3's published 52-column UP2DATA layout; each ``InstrumentsFile<Type>Reader`` keeps the records
@@ -23,6 +23,10 @@ readers (issue #163, 0.2.0).
 from filings_b3.search_trading_session.instruments_file import InstrumentsFileReader
 from filings_b3.search_trading_session.instruments_file_adr import InstrumentsFileAdrReader
 from filings_b3.search_trading_session.instruments_file_btc import InstrumentsFileBtcReader
+from filings_b3.search_trading_session.instruments_file_csh import InstrumentsFileCshReader
+from filings_b3.search_trading_session.instruments_file_drvs_optn_exrc import (
+	InstrumentsFileDrvsOptnExrcReader,
+)
 from filings_b3.search_trading_session.instruments_file_eqty import InstrumentsFileEqtyReader
 from filings_b3.search_trading_session.instruments_file_eqty_fwd import (
 	InstrumentsFileEqtyFwdReader,
@@ -30,27 +34,47 @@ from filings_b3.search_trading_session.instruments_file_eqty_fwd import (
 from filings_b3.search_trading_session.instruments_file_exrc_eqts import (
 	InstrumentsFileExrcEqtsReader,
 )
+from filings_b3.search_trading_session.instruments_file_fic import InstrumentsFileFicReader
+from filings_b3.search_trading_session.instruments_file_futr_ctrcts import (
+	InstrumentsFileFutrCtrctsReader,
+)
 from filings_b3.search_trading_session.instruments_file_fxd_incm import (
 	InstrumentsFileFxdIncmReader,
 )
+from filings_b3.search_trading_session.instruments_file_fxd_incm_non_trdbl import (
+	InstrumentsFileFxdIncmNonTrdblReader,
+)
+from filings_b3.search_trading_session.instruments_file_intl_bd import InstrumentsFileIntlBdReader
+from filings_b3.search_trading_session.instruments_file_ntl_bd import InstrumentsFileNtlBdReader
 from filings_b3.search_trading_session.instruments_file_optn_on_eqts import (
 	InstrumentsFileOptnOnEqtsReader,
 )
 from filings_b3.search_trading_session.instruments_file_optn_on_spot_and_futures import (
 	InstrumentsFileOptnOnSpotAndFuturesReader,
 )
+from filings_b3.search_trading_session.instruments_file_otc import InstrumentsFileOtcReader
+from filings_b3.search_trading_session.instruments_file_strtgy import InstrumentsFileStrtgyReader
 from filings_b3.search_trading_session.instruments_layout_meta import InstrumentsLayoutMetaReader
 
 
 __all__ = [
 	"InstrumentsFileAdrReader",
 	"InstrumentsFileBtcReader",
+	"InstrumentsFileCshReader",
+	"InstrumentsFileDrvsOptnExrcReader",
 	"InstrumentsFileEqtyFwdReader",
 	"InstrumentsFileEqtyReader",
 	"InstrumentsFileExrcEqtsReader",
+	"InstrumentsFileFicReader",
+	"InstrumentsFileFutrCtrctsReader",
+	"InstrumentsFileFxdIncmNonTrdblReader",
 	"InstrumentsFileFxdIncmReader",
+	"InstrumentsFileIntlBdReader",
+	"InstrumentsFileNtlBdReader",
 	"InstrumentsFileOptnOnEqtsReader",
 	"InstrumentsFileOptnOnSpotAndFuturesReader",
+	"InstrumentsFileOtcReader",
 	"InstrumentsFileReader",
+	"InstrumentsFileStrtgyReader",
 	"InstrumentsLayoutMetaReader",
 ]

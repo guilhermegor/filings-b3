@@ -25,7 +25,7 @@ contrato e com proveniência — valores monetários como `Decimal` exato, nunca
 
 ### 🗂️ Readers da Pesquisa por Pregão
 
-O arquivo de instrumentos do pregão (`IN{aammdd}.zip`, BVBG.028.02) é **um download lido de nove
+O arquivo de instrumentos do pregão (`IN{aammdd}.zip`, BVBG.028.02) é **um download lido de dezoito
 formas**: cada registro aninha os seus campos sob exatamente um de 20 blocos `InstrmInf`.
 
 - [`InstrumentsFileReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file/) — todos os tipos sob o layout de 52 colunas publicado pela B3.
@@ -36,8 +36,17 @@ formas**: cada registro aninha os seus campos sob exatamente um de 20 blocos `In
   [`InstrumentsFileExrcEqtsReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_exrc_eqts/) (exercício de opções),
   [`InstrumentsFileEqtyFwdReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_eqty_fwd/) (termo de ações),
   [`InstrumentsFileFxdIncmReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_fxd_incm/) (renda fixa),
-  [`InstrumentsFileAdrReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_adr/) (ADRs) e
-  [`InstrumentsFileBtcReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_btc/) (BTC).
+  [`InstrumentsFileAdrReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_adr/) (ADRs),
+  [`InstrumentsFileBtcReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_btc/) (BTC),
+  [`InstrumentsFileFutrCtrctsReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_futr_ctrcts/) (contratos futuros),
+  [`InstrumentsFileDrvsOptnExrcReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_drvs_optn_exrc/) (exercício de opções sobre derivativos),
+  [`InstrumentsFileStrtgyReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_strtgy/) (estratégias, com as duas pernas),
+  [`InstrumentsFileNtlBdReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_ntl_bd/) (títulos públicos nacionais),
+  [`InstrumentsFileIntlBdReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_intl_bd/) (títulos internacionais),
+  [`InstrumentsFileFxdIncmNonTrdblReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_fxd_incm_non_trdbl/) (renda fixa não negociável),
+  [`InstrumentsFileOtcReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_otc/) (balcão),
+  [`InstrumentsFileCshReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_csh/) (disponível) e
+  [`InstrumentsFileFicReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file_fic/) (fundos de investimento).
 - [`InstrumentsLayoutMetaReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_layout_meta/) — _snapshot_ tipado do layout autoritativo da B3, para o _datalake_ e para o job semanal de deriva de contrato.
 
 ### 🔒 Fidelidade por construção

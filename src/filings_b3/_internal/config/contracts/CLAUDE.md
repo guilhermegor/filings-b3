@@ -51,6 +51,44 @@ a **live response** — never copied from the stpstone module's column list.
 | `daily_bulletin` (BDI) | **Glossário — Dados Públicos**: one PDF per dataset. <https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/consultas/boletim-diario/dados-publicos-de-produtos-listados-e-de-balcao/glossario/> |
 | `search_trading_session` (Pesquisa por Pregão) | **Layout dos arquivos**. <https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/boletins-diarios/pesquisa-por-pregao/layout-dos-arquivos/> |
 
+### The contract-document hub — start here
+
+The user curates every public-data contract PDF from this one page; go here first rather than
+guessing a filename:
+
+<https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/consultas/boletim-diario/dados-publicos-de-produtos-listados-e-de-balcao/>
+
+Direct artifacts already pulled from it for the instruments family (both verified 2026-08-02):
+
+| Document | URL | Standing |
+|---|---|---|
+| **Catálogo de Mensagens — Cadastro de Instrumento, v2.6** (BVBG.028.02, 101 pp) | [`b3.com.br/data/files/0B/A1/CA/73/…-Versao-2.6.pdf`](https://www.b3.com.br/data/files/0B/A1/CA/73/86072710547B5127AC094EA8/Catalogo-de-Mensagens-Cadastro-de-Instrumento-Versao-2.6.pdf) | authoritative on **structure + cardinality** |
+| **Glossário — InstrumentsConsolidatedFile 2024** | [`b3.com.br/data/files/52/74/1E/14/…ConsolidatedFile%202024.pdf`](https://www.b3.com.br/data/files/52/74/1E/14/4BA6D8103152D4C8AC094EA8/Glossario%20InstrumentsConsolidatedFile%202024.pdf) | the consolidated reader's 52 columns |
+
+⚠️ The catalog's old `bvmfnet.com.br` host is **dead** — use the `b3.com.br/data/files/` URL above.
+⚠️ The catalog is dated **24/10/2017**. It gives every sub-block's field table with INDEX,
+tag, cardinality and XSD type — but it is **stale on field lists** (it omits four `NtlBdInf`
+fields that a live `IN` file carries) and its PDF columns **clip long tags**
+(`DerivOptnExrcInstrmId` → `DerivOptnExrcInst`). Rule of thumb: **the document wins on shape,
+the live artifact wins on presence.**
+
+### ⛔ A doc that indicts SHIPPED code becomes its own issue — always
+
+**Standing user rule (2026-08-02), mandatory.** When reading an authoritative document reveals
+that **already-released** code is wrong — wrong path, duplicated or inconsistent column name,
+missing field, stale field list — **open a `/issue` for it**, separate from whatever work
+surfaced it. Never fold the fix silently into the current PR; never leave it as a checkpoint note.
+
+This package is a published data contract. A defect left undocumented ships again on the next
+release, and (as #149 proved) can survive several releases with a fully green suite — a subset
+contract validates column *presence*, never *population* or *correctness*.
+
+1. Finish reading the document, then **scope the blast radius across every sibling reader** — the
+   same mistake usually repeats, so fix the class, not the one instance the doc happened to expose.
+2. One issue per distinct defect, citing the document (file/sheet/URL + version) and the evidence
+   (declared path/name vs observed).
+3. Reference the new issues in the current PR body as follow-ups — never as `Closes`.
+
 Download the matching PDF/layout and read it (it gives column order, PT/EN labels, and
 semantics). Match the dataset by its **friendly name**, not a guessed filename — the glossary
 lists e.g. "Empréstimos de Ativos - Posição em Aberto (BDI)" for `btb_lending_open_positions`.

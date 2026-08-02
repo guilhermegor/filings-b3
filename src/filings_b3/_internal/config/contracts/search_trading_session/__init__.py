@@ -27,6 +27,12 @@ from filings_b3._internal.config.contracts.search_trading_session.instruments_fi
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_btc import (
 	INSTRUMENTS_FILE_BTC,
 )
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_csh import (
+	INSTRUMENTS_FILE_CSH,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_drvs_optn_exrc import (  # noqa: E501
+	INSTRUMENTS_FILE_DRVS_OPTN_EXRC,
+)
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_eqty import (
 	INSTRUMENTS_FILE_EQTY,
 )
@@ -36,14 +42,35 @@ from filings_b3._internal.config.contracts.search_trading_session.instruments_fi
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_exrc_eqts import (  # noqa: E501
 	INSTRUMENTS_FILE_EXRC_EQTS,
 )
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_fic import (
+	INSTRUMENTS_FILE_FIC,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_futr_ctrcts import (  # noqa: E501
+	INSTRUMENTS_FILE_FUTR_CTRCTS,
+)
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_fxd_incm import (  # noqa: E501
 	INSTRUMENTS_FILE_FXD_INCM,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_fxd_incm_non_trdbl import (  # noqa: E501
+	INSTRUMENTS_FILE_FXD_INCM_NON_TRDBL,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_intl_bd import (  # noqa: E501
+	INSTRUMENTS_FILE_INTL_BD,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_ntl_bd import (
+	INSTRUMENTS_FILE_NTL_BD,
 )
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_optn_on_eqts import (  # noqa: E501
 	INSTRUMENTS_FILE_OPTN_ON_EQTS,
 )
 from filings_b3._internal.config.contracts.search_trading_session.instruments_file_optn_on_spot_and_futures import (  # noqa: E501
 	INSTRUMENTS_FILE_OPTN_ON_SPOT_AND_FUTURES,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_otc import (
+	INSTRUMENTS_FILE_OTC,
+)
+from filings_b3._internal.config.contracts.search_trading_session.instruments_file_strtgy import (
+	INSTRUMENTS_FILE_STRTGY,
 )
 from filings_b3._internal.config.contracts.search_trading_session.instruments_layout_meta import (
 	INSTRUMENTS_LAYOUT_META,
@@ -54,11 +81,20 @@ __all__ = [
 	"INSTRUMENTS_FILE",
 	"INSTRUMENTS_FILE_ADR",
 	"INSTRUMENTS_FILE_BTC",
+	"INSTRUMENTS_FILE_CSH",
+	"INSTRUMENTS_FILE_DRVS_OPTN_EXRC",
 	"INSTRUMENTS_FILE_EQTY",
 	"INSTRUMENTS_FILE_EQTY_FWD",
 	"INSTRUMENTS_FILE_EXRC_EQTS",
+	"INSTRUMENTS_FILE_FIC",
+	"INSTRUMENTS_FILE_FUTR_CTRCTS",
 	"INSTRUMENTS_FILE_FXD_INCM",
+	"INSTRUMENTS_FILE_FXD_INCM_NON_TRDBL",
+	"INSTRUMENTS_FILE_INTL_BD",
+	"INSTRUMENTS_FILE_NTL_BD",
 	"INSTRUMENTS_FILE_OPTN_ON_EQTS",
 	"INSTRUMENTS_FILE_OPTN_ON_SPOT_AND_FUTURES",
+	"INSTRUMENTS_FILE_OTC",
+	"INSTRUMENTS_FILE_STRTGY",
 	"INSTRUMENTS_LAYOUT_META",
 ]

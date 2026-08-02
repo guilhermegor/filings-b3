@@ -1,7 +1,7 @@
 """Tests for the per-sub-block instruments readers and the base they share.
 
-B3's ``IN{yymmdd}.zip`` is one download read nine ways: the consolidated reader spans every
-instrument type on B3's published 52-column UP2DATA layout, and eight per-type readers each
+B3's ``IN{yymmdd}.zip`` is one download read eighteen ways: the consolidated reader spans every
+instrument type on B3's published 52-column UP2DATA layout, and seventeen per-type readers each
 project one ``InstrmInf`` sub-block with that block's complete field list. These tests pin the
 family's invariants — every reader is a distinct projection of the same file, every mapped column
 is explicitly typed, and the consolidated reader's drift-gated column set stays exactly as
@@ -22,13 +22,22 @@ from filings_b3._internal.config.contracts import INSTRUMENTS_FILE
 from filings_b3.search_trading_session import (
 	InstrumentsFileAdrReader,
 	InstrumentsFileBtcReader,
+	InstrumentsFileCshReader,
+	InstrumentsFileDrvsOptnExrcReader,
 	InstrumentsFileEqtyFwdReader,
 	InstrumentsFileEqtyReader,
 	InstrumentsFileExrcEqtsReader,
+	InstrumentsFileFicReader,
+	InstrumentsFileFutrCtrctsReader,
+	InstrumentsFileFxdIncmNonTrdblReader,
 	InstrumentsFileFxdIncmReader,
+	InstrumentsFileIntlBdReader,
+	InstrumentsFileNtlBdReader,
 	InstrumentsFileOptnOnEqtsReader,
 	InstrumentsFileOptnOnSpotAndFuturesReader,
+	InstrumentsFileOtcReader,
 	InstrumentsFileReader,
+	InstrumentsFileStrtgyReader,
 )
 from filings_b3.search_trading_session._base_instruments_file_reader import (
 	_COMMON_PATHS,
@@ -38,21 +47,34 @@ from filings_b3.search_trading_session._base_instruments_file_reader import (
 
 _DATE_REF = date(2026, 7, 29)
 
-# The eight per-type readers and the sub-block each projects. The sub-block names are BVBG.028
+# The seventeen per-type readers and the sub-block each projects. The sub-block names are BVBG.028
 # tags confirmed present in a real IN file.
 _SUB_BLOCK_READERS: tuple[tuple[type[_BaseInstrumentsFileReader], str, str], ...] = (
 	(InstrumentsFileAdrReader, "ADRInf", "instruments_file_adr"),
 	(InstrumentsFileBtcReader, "BTCInf", "instruments_file_btc"),
+	(InstrumentsFileCshReader, "CshInf", "instruments_file_csh"),
+	(InstrumentsFileDrvsOptnExrcReader, "DrvsOptnExrcInf", "instruments_file_drvs_optn_exrc"),
 	(InstrumentsFileEqtyReader, "EqtyInf", "instruments_file_eqty"),
 	(InstrumentsFileEqtyFwdReader, "EqtyFwdInf", "instruments_file_eqty_fwd"),
 	(InstrumentsFileExrcEqtsReader, "ExrcEqtsInf", "instruments_file_exrc_eqts"),
+	(InstrumentsFileFicReader, "FICInf", "instruments_file_fic"),
+	(InstrumentsFileFutrCtrctsReader, "FutrCtrctsInf", "instruments_file_futr_ctrcts"),
 	(InstrumentsFileFxdIncmReader, "FxdIncmInf", "instruments_file_fxd_incm"),
+	(
+		InstrumentsFileFxdIncmNonTrdblReader,
+		"FxdIncmNonTrdblInf",
+		"instruments_file_fxd_incm_non_trdbl",
+	),
+	(InstrumentsFileIntlBdReader, "IntlBdInf", "instruments_file_intl_bd"),
+	(InstrumentsFileNtlBdReader, "NtlBdInf", "instruments_file_ntl_bd"),
 	(InstrumentsFileOptnOnEqtsReader, "OptnOnEqtsInf", "instruments_file_optn_on_eqts"),
 	(
 		InstrumentsFileOptnOnSpotAndFuturesReader,
 		"OptnOnSpotAndFutrsInf",
 		"instruments_file_optn_on_spot_and_futures",
 	),
+	(InstrumentsFileOtcReader, "OTCInf", "instruments_file_otc"),
+	(InstrumentsFileStrtgyReader, "StrtgyInf", "instruments_file_strtgy"),
 )
 
 _IDS = [cls_reader.__name__ for cls_reader, _, _ in _SUB_BLOCK_READERS]
@@ -107,10 +129,11 @@ def test_every_mapped_column_is_explicitly_typed(
 	"""No column reaches a datalake on pandas' inference — dates, decimals, then text.
 
 	The three sets must partition the mapped columns exactly: a column missing from all of them
-	would be inferred, and one in two of them would be coerced twice.
+	would be inferred, and one in two of them would be coerced twice. A self-joined column is
+	mapped too — it lands in the frame like any other and must be typed like any other.
 	"""
 	cls_r = cls_reader(_DATE_REF)
-	set_cols = set(cls_r.dict_paths)
+	set_cols = set(cls_r.dict_paths) | set(cls_r.dict_joins)
 	set_dates = set(cls_r.list_all_date_cols)
 	set_decimals = set(cls_r.list_decimal_cols)
 	set_text = set(cls_r.dict_dtypes)
@@ -129,7 +152,9 @@ def test_contract_required_columns_are_all_mapped(
 	"""A contract cannot require a column the reader never maps — that would fail every read."""
 	cls_r = cls_reader(_DATE_REF)
 
-	set_unmapped = set(cls_r.cls_contract.tuple_required) - set(cls_r.dict_paths)
+	set_unmapped = (
+		set(cls_r.cls_contract.tuple_required) - set(cls_r.dict_paths) - set(cls_r.dict_joins)
+	)
 
 	assert not set_unmapped, f"{cls_reader.__name__} requires unmapped {sorted(set_unmapped)}"
 
@@ -195,6 +220,61 @@ def test_consolidated_reader_resolves_both_strategy_legs_distinctly() -> None:
 	# The join brings back a ticker, not the opaque id the leg actually references.
 	assert str_value.endswith("TckrSymb")
 	assert str_pk == "FinInstrmId/OthrId/Id"
+
+
+def test_per_type_strategy_reader_publishes_both_legs_independently() -> None:
+	"""``StrtgyInf`` legs repeat, so each leg gets its own columns — leg 2 must not be dropped.
+
+	``StrtgyLegList`` is ``[1..*]``: in the reconciled session 1,012 of 1,065 strategy records
+	carry two legs and 53 carry one. A single un-indexed path would silently keep leg 1 and drop
+	leg 2 — the sibling of the #149 defect, where the leg columns were null on every row because
+	``SdTpCd`` was mapped as a *child* of ``LegId`` rather than its sibling.
+	"""
+	cls_r = InstrumentsFileStrtgyReader(_DATE_REF)
+	dict_own = cls_r.dict_own_paths
+
+	for str_field in ("LEG_ID", "SD_TP_CD", "UNDRLYG_INSTRM_ID"):
+		str_leg1, str_leg2 = dict_own[f"{str_field}1"], dict_own[f"{str_field}2"]
+		assert str_leg1 != str_leg2, f"{str_field}: legs share a path — leg 2 duplicates leg 1"
+		assert str_leg1.startswith("StrtgyLegList[1]/")
+		assert str_leg2.startswith("StrtgyLegList[2]/")
+
+	# LegId is a sibling of the values, never their parent — the shape that caused #149.
+	assert "LegId/" not in dict_own["SD_TP_CD1"]
+
+	# Each leg publishes the raw id AND that id resolved to a ticker, matching the consolidated
+	# reader column-for-column so the two readers cannot disagree about the same leg.
+	str_fk1, str_pk, str_value = cls_r.dict_joins["UNDRLYG_TCKR_SYMB1"]
+	str_fk2, _, _ = cls_r.dict_joins["UNDRLYG_TCKR_SYMB2"]
+	assert str_fk1 != str_fk2
+	assert str_value.endswith("TckrSymb")
+	assert str_pk == "FinInstrmId/OthrId/Id"
+	# The join reaches outside this sub-block by design, so its paths are record-relative.
+	assert str_fk1.startswith("InstrmInf/StrtgyInf/StrtgyLegList[1]/")
+	# Only leg 1 is guaranteed, since a one-legged strategy is valid; requiring leg 2 would reject
+	# the 53 records that legitimately have a single leg.
+	assert "SD_TP_CD1" in cls_r.cls_contract.tuple_required
+	assert "SD_TP_CD2" not in cls_r.cls_contract.tuple_required
+
+
+def test_currency_companions_accompany_every_amount_in_the_new_bond_readers() -> None:
+	"""Each ISO-20022 amount carries its ``Ccy`` attribute — the unit is never dropped.
+
+	B3 puts the currency in an attribute of the amount element, so a text-only read would say
+	``27.35`` with no way back to ``BRL``. Regression guard for the gap that #147 still tracks on
+	the consolidated reader.
+	"""
+	cls_ntl = InstrumentsFileNtlBdReader(_DATE_REF)
+	cls_intl = InstrumentsFileIntlBdReader(_DATE_REF)
+
+	for cls_r in (cls_ntl, cls_intl):
+		for str_col in cls_r.list_decimal_cols:
+			assert cls_r.dict_own_paths[f"{str_col}_CCY"].endswith("/@Ccy")
+			assert cls_r.dict_dtypes[f"{str_col}_CCY"] == "str"
+
+	# The bond's own denomination and the issue price's unit are different fields, not duplicates.
+	assert cls_intl.dict_own_paths["CCY"] == "Ccy"
+	assert cls_intl.dict_own_paths["ISSE_PRIC_CCY"] == "IssePric/@Ccy"
 
 
 def test_base_rejects_a_reader_missing_a_required_attribute() -> None:
