@@ -215,6 +215,16 @@ separados — veja `.github/dependabot.yml`, que usa `versioning-strategy: lockf
 atualizar o `poetry.lock` (mantendo a CI honesta sobre o que os consumidores instalam) sem nunca
 reescrever suas faixas do `pyproject`.
 
+> **A chave do cache do venv precisa hashear o `poetry.lock`.** Essa honestidade não é automática:
+> um PR de bump `lockfile-only` produz, por construção, um diff que **só** toca o lockfile. Se a
+> chave do cache hasheasse apenas o `pyproject.toml` (o defeito de #169), todo bump seria um *cache
+> hit*, restauraria um `.venv` pré-bump, **pularia a instalação** e ficaria verde testando
+> exatamente o conjunto de dependências que o PR se propunha a mudar. Como a classe `deps`
+> entra no auto-merge tendo "a suíte de testes" como gate, isso mergeia bumps sem que nada os
+> tenha exercitado. Os três workflows hasheiam `poetry.lock` **e** `pyproject.toml`, cacheiam
+> só `.venv` (nunca um arquivo versionado) e rodam `poetry check --lock` como step próprio e
+> incondicional, antes do restore do cache.
+
 ## Fluxo automatizado de PR (o quality gate)
 
 Todo PR é classificado por `bin/pr_gate.py` (workflow `pr-gate.yaml`), que o rotula, posta um único

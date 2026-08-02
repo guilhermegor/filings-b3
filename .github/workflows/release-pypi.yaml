@@ -107,14 +107,31 @@ jobs:
           virtualenvs-create: true
           version: 2.1.2
 
+      # Unconditional, BEFORE the cache restore and BEFORE the step that rewrites
+      # pyproject.toml — so it validates the same committed tree a developer checks locally.
+      - name: Validate Lock File
+        # Fail loud on a stale lock instead of silently regenerating it. This step used to run
+        # `rm -f poetry.lock && poetry lock --no-cache`, which re-resolves every dependency to
+        # the latest in-range version — on the workflow that publishes to PyPI, that means
+        # shipping a wheel built against dependencies nobody reviewed or committed. Require an
+        # intentional `poetry lock` + commit instead, matching the contract tests.yaml states.
+        run: |
+          if ! poetry check --lock; then
+            echo "::error::poetry.lock is out of sync with pyproject.toml — run 'poetry lock' locally and commit the result." >&2
+            exit 1
+          fi
+
       - name: Load Cached Virtual Environment
         id: cached-venv
         uses: actions/cache@v6
         with:
-          path: |
-            .venv
-            poetry.lock
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          # `.venv` only — never a tracked file. Caching poetry.lock let a restored cache
+          # overwrite the committed lockfile, so the gate above would validate a cache
+          # artifact instead of the tree. Cache build output, never versioned source.
+          path: .venv
+          # The lock must be in the key: hashing pyproject.toml alone makes every lock-only
+          # change a cache hit, restoring a stale .venv and skipping the install entirely.
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
 
       - name: Install Dependencies
         if: steps.cached-venv.outputs.cache-hit != 'true'
@@ -128,13 +145,6 @@ jobs:
           content = re.sub(r"pywin32\s*=.*\n", "", content)
           print(content)
           ' > pyproject.toml
-
-          # regenerate lock file, if needed
-          if ! poetry check --lock; then
-            echo "Lock file is outdated, regenerating..."
-            rm -f poetry.lock
-            poetry lock --no-cache
-          fi
 
           # install dependencies, excluding dev and docs groups if present
           without_groups=()
