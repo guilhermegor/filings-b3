@@ -22,6 +22,15 @@ nav:
           - "Instrumentos — Renda fixa": api/search_trading_session/instruments_file_fxd_incm.md
           - "Instrumentos — ADRs": api/search_trading_session/instruments_file_adr.md
           - "Instrumentos — BTC": api/search_trading_session/instruments_file_btc.md
+          - "Instrumentos — Contratos futuros": api/search_trading_session/instruments_file_futr_ctrcts.md
+          - "Instrumentos — Exercício de opções sobre derivativos": api/search_trading_session/instruments_file_drvs_optn_exrc.md
+          - "Instrumentos — Estratégias": api/search_trading_session/instruments_file_strtgy.md
+          - "Instrumentos — Títulos públicos nacionais": api/search_trading_session/instruments_file_ntl_bd.md
+          - "Instrumentos — Títulos internacionais": api/search_trading_session/instruments_file_intl_bd.md
+          - "Instrumentos — Renda fixa não negociável": api/search_trading_session/instruments_file_fxd_incm_non_trdbl.md
+          - "Instrumentos — Balcão (OTC)": api/search_trading_session/instruments_file_otc.md
+          - "Instrumentos — Disponível (cash)": api/search_trading_session/instruments_file_csh.md
+          - "Instrumentos — Fundos de investimento (FIC)": api/search_trading_session/instruments_file_fic.md
           - Metadados de layout: api/search_trading_session/instruments_layout_meta.md
   - FAQ: faq.md
   - Contribuindo: contributing.md
