@@ -15,6 +15,14 @@ artifact — a trust boundary — and defusedxml neutralises the entity-expansio
 attacks that stdlib ElementTree does not defend against. Matching is **namespace-agnostic** (by
 local name), so a B3 namespace-version bump does not silently break every path.
 
+The document is **streamed**, not materialised: records are projected as they close and their
+subtrees released immediately, so peak memory tracks the rows kept rather than the file's size
+(#167). This matters because one 660 MB artifact is read up to eighteen ways — under the previous
+whole-tree parse a two-row projection cost as much as the full file (~3.0 GB either way; now
+~1.13 GB against ~1.86 GB). Two consequences shape the code below: a file-level scalar is resolved
+from whichever element carries it **as that element closes**, and joins are applied only once the
+stream is exhausted, since a stream cannot look ahead to a record it has not reached.
+
 The contract + dtype tail is shared with :mod:`tabular_reader` (``find_contract_problems`` then
 ``apply_dtypes``), so an XML read and a tabular read cannot diverge in how they validate or type.
 Bare ``pd.read_*`` / raw XML parsing is banned project-wide; this seam is the one exempt place for
@@ -28,7 +36,7 @@ from pathlib import Path
 import re
 from xml.etree.ElementTree import Element  # noqa: S405 - typing only; parsing uses defusedxml
 
-from defusedxml.ElementTree import parse as parse_xml
+from defusedxml.ElementTree import iterparse
 import pandas as pd
 
 from filings_b3._internal.utils.dtypes import apply_dtypes
@@ -224,34 +232,31 @@ def _leaf_text(cls_elem: Element) -> str | None:
 
 
 @type_checker
-def _resolve_scalar(cls_root: Element, str_path: str) -> str | None:
-	"""Resolve a file-level scalar path anywhere in the tree (first match wins).
+def _scalar_from_candidate(cls_elem: Element, str_path: str) -> str | None:
+	"""Resolve a file-level scalar path against an element that matches its **first** segment.
 
 	Unlike a row-relative path, a scalar's first segment need not be a direct child of the root
-	(the report date sits several levels down), so the first segment is matched against **any**
-	descendant and the remainder walked as direct children from there.
+	(the report date sits several levels down), so the caller matches that first segment against
+	**any** element in the document and this resolves the remainder as direct children from there.
+
+	Splitting it this way is what lets scalars be resolved from a *stream*: the caller tests each
+	element as it closes, rather than walking a fully materialised tree.
 
 	Parameters
 	----------
-	cls_root : xml.etree.ElementTree.Element
-		The document root.
+	cls_elem : xml.etree.ElementTree.Element
+		An element whose local name equals ``str_path``'s first segment.
 	str_path : str
 		A ``/``-joined local-name path (e.g. ``"RptParams/RptDtAndTm/Dt"``).
 
 	Returns
 	-------
 	str or None
-		The stripped leaf text of the first resolving match, or ``None``.
+		The stripped leaf text, or ``None`` when the remainder does not resolve.
 	"""
-	list_seg = str_path.split("/")
-	str_rest = "/".join(list_seg[1:])
-	for cls_elem in cls_root.iter():
-		if _local_name(cls_elem.tag) != list_seg[0]:
-			continue
-		str_text = _resolve_text(cls_elem, str_rest) if str_rest else (cls_elem.text or "").strip()
-		if str_text:
-			return str_text
-	return None
+	_, _, str_rest = str_path.partition("/")
+	str_text = _resolve_text(cls_elem, str_rest) if str_rest else (cls_elem.text or "").strip()
+	return str_text or None
 
 
 @type_checker
@@ -326,46 +331,62 @@ def read_xml(
 	ContractError
 		When the flattened frame violates ``cls_contract``.
 	"""
-	cls_root = parse_xml(str(path_file)).getroot()
-
-	dict_scalar_vals = {
-		str_col: _resolve_scalar(cls_root, str_path)
-		for str_col, str_path in (dict_scalars or {}).items()
-	}
-
 	# Lookup tables for the self-joins, keyed by primary-key path and value path together, so that
 	# joins sharing a target build it once. Populated from EVERY record, including filtered rows.
 	dict_lookups: dict[tuple[str, str], dict[str, str]] = {
 		(str_pk, str_value): {} for _, str_pk, str_value in (dict_joins or {}).values()
 	}
 
+	# A scalar's first segment names the element it is resolved from; matching it as that element
+	# CLOSES is what lets a scalar be read from a stream. First match wins, as before.
+	dict_scalar_heads = {
+		str_col: str_path.partition("/")[0] for str_col, str_path in (dict_scalars or {}).items()
+	}
+	dict_scalar_vals: dict[str, str | None] = dict.fromkeys(dict_scalars or {})
+
 	list_rows: list[dict[str, str | None]] = []
-	for cls_rec in cls_root.iter():
-		if _local_name(cls_rec.tag) != str_row_tag:
+	for _, cls_elem in iterparse(str(path_file), events=("end",)):
+		str_local = _local_name(cls_elem.tag)
+
+		for str_col, str_head in dict_scalar_heads.items():
+			if dict_scalar_vals[str_col] is None and str_local == str_head:
+				dict_scalar_vals[str_col] = _scalar_from_candidate(
+					cls_elem, (dict_scalars or {})[str_col]
+				)
+
+		if str_local != str_row_tag:
 			continue
+
 		for (str_pk, str_value), dict_lookup in dict_lookups.items():
-			str_key = _resolve_text(cls_rec, str_pk)
-			str_val = _resolve_text(cls_rec, str_value)
+			str_key = _resolve_text(cls_elem, str_pk)
+			str_val = _resolve_text(cls_elem, str_value)
 			if str_key is not None and str_val is not None:
 				dict_lookup[str_key] = str_val
-		if str_row_filter is not None and not _has_path(cls_rec, str_row_filter):
-			continue
-		dict_row: dict[str, str | None] = dict(dict_scalar_vals)
-		for str_col, seq_paths in dict_paths.items():
-			dict_row[str_col] = next(
-				(
-					str_val
-					for str_path in seq_paths
-					if (str_val := _resolve_text(cls_rec, str_path)) is not None
-				),
-				None,
-			)
-		# Store the raw foreign key; it is translated below, once every record has been seen.
-		for str_col, (str_fk, _, _) in (dict_joins or {}).items():
-			dict_row[str_col] = _resolve_text(cls_rec, str_fk)
-		list_rows.append(dict_row)
+		if str_row_filter is None or _has_path(cls_elem, str_row_filter):
+			dict_row: dict[str, str | None] = {}
+			for str_col, seq_paths in dict_paths.items():
+				dict_row[str_col] = next(
+					(
+						str_val
+						for str_path in seq_paths
+						if (str_val := _resolve_text(cls_elem, str_path)) is not None
+					),
+					None,
+				)
+			# Store the raw foreign key; it is translated below, once every record has been seen.
+			for str_col, (str_fk, _, _) in (dict_joins or {}).items():
+				dict_row[str_col] = _resolve_text(cls_elem, str_fk)
+			list_rows.append(dict_row)
 
+		# Release the record's subtree now that it has been projected — this is what keeps memory
+		# flat. What stays behind is one empty element per record, bytes rather than the gigabytes
+		# a fully materialised tree cost, plus the non-record elements scalars are read from.
+		cls_elem.clear()
+
+	# Scalars and joins are applied here, not while building each row, because either may only
+	# resolve after some rows have already been emitted — a stream cannot look ahead.
 	for dict_row in list_rows:
+		dict_row.update(dict_scalar_vals)
 		for str_col, (_, str_pk, str_value) in (dict_joins or {}).items():
 			str_key = dict_row[str_col]
 			dict_row[str_col] = (

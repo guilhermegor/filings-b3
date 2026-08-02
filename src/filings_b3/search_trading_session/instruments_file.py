@@ -33,9 +33,10 @@ holds **17** sub-block types, not the 7 the UP2DATA consolidated sheet enumerate
 wildcard covers all of them. Columns that a given instrument type does not carry (a cash or bond
 record has no ``TckrSymb``) are legitimately null — the source has no such value.
 
-# ponytail: read_xml loads the whole XML tree in memory — the real IN file is ~660 MB (~4 GB
-# resident). Fine on a workstation and for the weekly job; switch read_xml to an iterparse stream
-# keyed on the row tag if a memory-constrained consumer needs it (tracked as a follow-up).
+This is the widest read of the family — every record becomes a row — so it is also the most
+expensive: ~1.86 GB peak for the real ``IN260729``'s 183,164 rows, against ~1.13 GB for a
+single-block read. ``read_xml`` streams the document rather than materialising it (#167), so that
+cost tracks the rows kept; it was ~3.58 GB before.
 """
 
 from __future__ import annotations
