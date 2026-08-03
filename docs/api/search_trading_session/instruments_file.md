@@ -81,3 +81,36 @@ df = InstrumentsFileReader(
 
 print(df[["source_key", "content_hash", "updated_at"]].iloc[0])
 ```
+
+### A moeda dos valores monetários
+
+No ISO-20022 a moeda de um valor é um **atributo** do próprio elemento do valor, não um elemento
+irmão:
+
+```xml
+<ExrcPric Ccy="BRL">27.35</ExrcPric>
+```
+
+Cada valor monetário vem com a sua coluna companheira de moeda — `EXRC_PRIC` → **`EXRC_PRIC_CCY`**,
+`MKT_CPTLSTN` → **`MKT_CPTLSTN_CCY`** (issue #147):
+
+```python
+monetarios = df[df["EXRC_PRIC"].notna()]
+print(monetarios[["TCKR_SYMB", "EXRC_PRIC", "EXRC_PRIC_CCY"]].head())
+```
+
+**`TRADG_CCY` não substitui essas colunas.** Ela é a moeda de *negociação* do instrumento, e nem
+sempre coincide com a moeda do valor. Medido em um `IN260729` real: **1.074 valores carregam `@Ccy`
+em registros que não têm `TradgCcy` nenhum** — `IssePric` em USD/EUR/MXN/XXX, `MtrtyVal` e
+`BaseDtPric`. Nesses casos a moeda só existe no atributo.
+
+`CTRCT_MLTPLR` e `ASST_QTN_QTY` não têm companheira de moeda: são um multiplicador e uma
+quantidade, não dinheiro, e não carregam `@Ccy` no arquivo real.
+
+> As colunas `_CCY` **não entram** na comparação do `bin/check_contract_drift.py`. O layout UP2DATA
+> enumera *campos* achatados e nunca declara um atributo XML, então contá-las reportaria deriva
+> contra um layout que não tem como listá-las. A regra vale para qualquer caminho terminado em
+> `/@Attr`, não para uma lista de nomes.
+
+Os *readers por sub-bloco* (`InstrumentsFileEqtyReader` e irmãos) seguem a mesma convenção, com uma
+cobertura maior de valores monetários (`FRST_PRIC_CCY`, `LAST_PRIC_CCY`, `RGHTS_ISSE_PRIC_CCY`, …).

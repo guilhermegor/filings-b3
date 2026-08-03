@@ -231,15 +231,24 @@ def test_consolidated_reader_keeps_its_drift_gated_layout() -> None:
 
 	It takes none of the base's common-block columns: the contract-drift oracle compares this
 	reader's mapped set against B3's declared layout, so an extra column would read as drift.
-	"""
-	cls_r = InstrumentsFileReader(_DATE_REF)
 
+	The pin is on the **layout-comparable** set, not on the raw column count. Columns derived from
+	an XML *attribute* (``EXRC_PRIC_CCY`` ← ``ExrcPric/@Ccy``) are read by the reader but excluded
+	from the comparison, because a flat field layout can never declare an attribute (#147) — so the
+	frame legitimately carries more columns than the layout has fields.
+	"""
 	cls_r = InstrumentsFileReader(_DATE_REF)
 
 	assert cls_r.str_sub_block is None
 	assert cls_r.dict_common_paths == {}
-	# 52 source columns total, however each one is resolved — two of them are self-joins.
-	assert len(cls_r.dict_paths) + len(cls_r.dict_joins) == 52
+	# 52 layout fields, however each one is resolved — two of them are self-joins.
+	set_attr_derived = {
+		str_col
+		for str_col, tuple_paths in cls_r.dict_paths.items()
+		if any("/@" in str_path for str_path in tuple_paths)
+	}
+	assert len(cls_r.dict_paths) + len(cls_r.dict_joins) - len(set_attr_derived) == 52
+	assert set_attr_derived, "the currency companions are gone — #147 regressed"
 	assert cls_r.cls_contract is INSTRUMENTS_FILE
 	assert "INSTRM_DESC" not in cls_r.dict_paths
 

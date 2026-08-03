@@ -92,6 +92,13 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 	"SD_TP_CD2": ("InstrmInf/StrtgyInf/StrtgyLegList[2]/SdTpCd",),
 	"PURE_GOLD_WGHT": ("InstrmInf/*/PureGoldWght",),
 	"EXRC_PRIC": ("InstrmInf/*/ExrcPric",),
+	# In ISO-20022 the currency of a value is an ATTRIBUTE of the value element, not a sibling, so
+	# it is invisible to a path that reads element text — and the value column still looks fully
+	# populated, which is why this shipped for several releases. The trading-currency column is no
+	# substitute, since a real IN file holds 1.074 values whose currency attribute sits inside a
+	# record carrying no trading currency at all, and for those the currency exists only here. Map
+	# every attribute of a mapped element — an attribute is data, not decoration (#147).
+	"EXRC_PRIC_CCY": ("InstrmInf/*/ExrcPric/@Ccy",),
 	"OPTN_STYLE": ("InstrmInf/*/OptnStyle",),
 	"VAL_TP_NM": ("InstrmInf/*/ValTpCd",),
 	"PRM_UPFRNT_IND": ("InstrmInf/*/PrmUpfrntInd",),
@@ -107,6 +114,7 @@ _DICT_PATHS: dict[str, tuple[str, ...]] = {
 	"CORP_ACTN_START_DT": ("InstrmInf/*/CorpActnStartDt",),
 	"CTDY_TRTMNT_TP_NM": ("InstrmInf/*/CtdyTrtmntTp",),
 	"MKT_CPTLSTN": ("InstrmInf/*/MktCptlstn",),
+	"MKT_CPTLSTN_CCY": ("InstrmInf/*/MktCptlstn/@Ccy",),
 	"CORP_GOVN_LVL_NM": ("InstrmInf/*/GovnInd",),
 }
 

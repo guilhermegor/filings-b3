@@ -93,6 +93,50 @@ Download the matching PDF/layout and read it (it gives column order, PT/EN label
 semantics). Match the dataset by its **friendly name**, not a guessed filename — the glossary
 lists e.g. "Empréstimos de Ativos - Posição em Aberto (BDI)" for `btb_lending_open_positions`.
 
+## ⛔ ALWAYS map the XML ATTRIBUTES, not just element text
+
+**Standing user rule (2026-08-03), mandatory:** *"sempre trazer os atributos"* — always bring the
+attributes.
+
+In XML (and ISO-20022 especially) a field's qualifier is frequently an **attribute of the value
+element**, not a sibling element:
+
+```xml
+<ExrcPric Ccy="BRL">27.35</ExrcPric>
+```
+
+A path that reads element **text** cannot see it, so the qualifier is dropped **silently** — the
+column looks perfectly populated and nothing goes red. **Whenever a reader maps an element, it must
+also map that element's attributes**, as a companion column named `<COL>_<ATTR>`
+(`EXRC_PRIC` → `EXRC_PRIC_CCY`). The seam supports it: a final `@name` path segment reads an
+attribute (`"InstrmInf/*/ExrcPric/@Ccy"`).
+
+**Do not "derive" the attribute from a sibling column.** #147 was first closed on the reasoning that
+`TRADG_CCY` already recovered the currency — measured over a hand-picked tag list that happened to
+exclude the tags where it fails. Exhaustively, a real `IN260729` has **1,074 values carrying `@Ccy`
+in records with no `TradgCcy` at all** (`IssePric` in USD/EUR/MXN/XXX, `MtrtyVal`, `BaseDtPric`).
+The lookalike column is a coincidence on the common rows, never the contract.
+
+How to check a source exhaustively — enumerate, never sample:
+
+```python
+# every (element, attribute) pair present anywhere under the row tag
+for _ev, el in ET.iterparse(fh, events=("end",)):
+    for leaf in el.iter():
+        for k in leaf.attrib:
+            seen[(leaf.tag.rsplit("}", 1)[-1], k)] += 1
+```
+
+Two consequences to keep in mind:
+
+- **Attribute columns are excluded from the drift oracle** (`bin/check_contract_drift.py`). A flat
+  published layout enumerates *fields* and can never declare an XML attribute, so counting them
+  would report drift the instant a reader reads more of the source than the layout can express.
+  The exclusion keys off `/@` in the path, so a new attribute column is handled automatically.
+- **Test that the attribute path resolved to the attribute**, not to the element's text — the
+  failure mode fills the column with prices instead of `BRL` and still looks populated. Assert the
+  value *shape* (ISO-4217: three alphabetic characters), not merely non-null.
+
 ## Reconcile the layout against a live response before trusting it
 
 The glossary gives *descriptive* EN labels; the JSON API returns terse PascalCase field **codes**

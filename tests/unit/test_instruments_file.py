@@ -83,6 +83,44 @@ def test_decimal_columns_stay_exact(_patch_download: None) -> None:
 		assert all(isinstance(v, Decimal) for v in series_mult)
 
 
+def test_monetary_values_carry_their_own_currency_attribute(_patch_download: None) -> None:
+	"""Every monetary value ships the ``@Ccy`` attribute beside it, never bare (#147).
+
+	In ISO-20022 the currency of a value is an *attribute* of the value element
+	(``<ExrcPric Ccy="BRL">27.35</ExrcPric>``), so a path that reads element text cannot see it and
+	the consolidated reader silently dropped it.
+
+	``TRADG_CCY`` is **not** a substitute. Measured on a real ``IN260729``: 1,074 values carry a
+	``@Ccy`` while their record has no ``TradgCcy`` at all — ``IssePric`` in USD/EUR/MXN/XXX,
+	``MtrtyVal``, ``BaseDtPric``. For those the currency is simply unrecoverable without reading
+	the attribute, so the companion columns are the only correct answer.
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	for str_value, str_ccy in (("EXRC_PRIC", "EXRC_PRIC_CCY"), ("MKT_CPTLSTN", "MKT_CPTLSTN_CCY")):
+		series_present = df_out[str_value].notna()
+		assert series_present.any(), f"{str_value} absent from the sample — fixture drifted"
+		assert not (series_present & df_out[str_ccy].isna()).any(), (
+			f"{str_value} has a value with no {str_ccy} — the currency attribute was dropped"
+		)
+		# A currency without a value would mean the attribute path resolved off the wrong element.
+		assert not (df_out[str_ccy].notna() & ~series_present).any(), str_ccy
+
+
+def test_currency_columns_are_iso_4217_codes(_patch_download: None) -> None:
+	"""The currency companions carry ISO-4217 codes, not the numeric value they belong to.
+
+	Guards the attribute path resolving to the element's *text* instead of its attribute — which
+	would silently fill the column with prices and still look populated.
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	for str_ccy in ("EXRC_PRIC_CCY", "MKT_CPTLSTN_CCY"):
+		set_values = set(df_out[str_ccy].dropna())
+		assert set_values, f"{str_ccy} entirely null — the attribute path did not resolve"
+		assert all(len(v) == 3 and v.isalpha() for v in set_values), f"{str_ccy}: {set_values}"
+
+
 def test_build_url_is_date_addressed() -> None:
 	"""The download URL carries the session date as ``IN{yymmdd}.zip``."""
 	str_url = InstrumentsFileReader(date(2025, 1, 2)).build_url()

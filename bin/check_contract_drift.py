@@ -102,12 +102,26 @@ def mapped_columns() -> frozenset[str]:
 	"a column we read" as one resolved by a direct path, and B3's layout declares them the same
 	way. Omitting the joins would report them as drift against a layout that does declare them.
 
+	**Attribute-derived columns are excluded**, and that asymmetry is deliberate. A column whose
+	path ends in ``/@Attr`` (``EXRC_PRIC_CCY`` ← ``ExrcPric/@Ccy``) carries an XML *attribute* of a
+	value the layout already declares — the UP2DATA layout enumerates flat *fields*, so it never
+	lists them. Counting them would make every such column report as "reader maps X, gone from B3's
+	layout" the moment it is added — the oracle would punish reading more of the source than the
+	flat layout can express. The test is derived from the path, not a hard-coded name list, so a
+	future attribute column is handled without touching this function (#147).
+
 	Returns
 	-------
 	frozenset of str
-		The reader's full mapped column set — the drift oracle's "what we read" side.
+		The reader's mapped column set restricted to layout-comparable columns — the drift
+		oracle's "what we read" side.
 	"""
-	return frozenset(_inst._DICT_PATHS) | frozenset(_inst._DICT_JOINS)
+	frozenset_attr_derived = frozenset(
+		str_col
+		for str_col, tuple_paths in _inst._DICT_PATHS.items()
+		if any("/@" in str_path for str_path in tuple_paths)
+	)
+	return (frozenset(_inst._DICT_PATHS) | frozenset(_inst._DICT_JOINS)) - frozenset_attr_derived
 
 
 # ---------------------------------------------------------------------------------------------
