@@ -66,8 +66,33 @@ def test_mapped_columns_are_the_consolidated_reader_paths_and_joins() -> None:
 	"""
 	from filings_b3.search_trading_session import instruments_file as inst
 
-	assert drift.mapped_columns() == frozenset(inst._DICT_PATHS) | frozenset(inst._DICT_JOINS)
+	frozenset_attr = frozenset(
+		str_col
+		for str_col, tuple_paths in inst._DICT_PATHS.items()
+		if any("/@" in str_path for str_path in tuple_paths)
+	)
+	assert (
+		drift.mapped_columns()
+		== (frozenset(inst._DICT_PATHS) | frozenset(inst._DICT_JOINS)) - frozenset_attr
+	)
 	assert frozenset(inst._DICT_JOINS) <= drift.mapped_columns()
+
+
+def test_mapped_columns_exclude_attribute_derived_columns() -> None:
+	"""An XML-attribute column is read but never compared against B3's flat layout (#147).
+
+	``EXRC_PRIC_CCY`` comes from ``ExrcPric/@Ccy`` — an *attribute* of a value the UP2DATA layout
+	already declares as a field. The layout enumerates flat fields, so it can never list it;
+	counting it would report drift the instant the reader starts reading more of the source than
+	the flat layout can express. The rule keys off the ``/@`` in the path, so a future attribute
+	column is excluded automatically rather than by name.
+	"""
+	from filings_b3.search_trading_session import instruments_file as inst
+
+	assert "EXRC_PRIC_CCY" in inst._DICT_PATHS, "fixture drifted — the attribute column is gone"
+	assert not (drift.mapped_columns() & frozenset({"EXRC_PRIC_CCY", "MKT_CPTLSTN_CCY"}))
+	# The value columns themselves stay in the comparison — only the attributes are excluded.
+	assert frozenset({"EXRC_PRIC", "MKT_CPTLSTN"}) <= drift.mapped_columns()
 
 
 def test_mapped_columns_exclude_the_per_type_readers() -> None:

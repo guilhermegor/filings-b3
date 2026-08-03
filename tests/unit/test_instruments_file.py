@@ -83,32 +83,42 @@ def test_decimal_columns_stay_exact(_patch_download: None) -> None:
 		assert all(isinstance(v, Decimal) for v in series_mult)
 
 
-def test_tradg_ccy_recovers_the_currency_of_every_monetary_value(_patch_download: None) -> None:
-	"""``TRADG_CCY`` is the currency of the row's monetary values — the ``@Ccy`` attribute (#147).
+def test_monetary_values_carry_their_own_currency_attribute(_patch_download: None) -> None:
+	"""Every monetary value ships the ``@Ccy`` attribute beside it, never bare (#147).
 
 	In ISO-20022 the currency of a value is an *attribute* of the value element
-	(``<ExrcPric Ccy="BRL">27.35</ExrcPric>``), so the consolidated reader looks like it drops it.
-	It does not: the reader already maps ``TRADG_CCY``, and ``@Ccy`` never diverges from the
-	record's own ``TradgCcy`` — reconciled over 371,656 records across two real sessions
-	(``IN260729`` + ``IN260731``), including every USD case. Companion ``<COL>_CCY`` columns would
-	therefore be redundant, which is why #147 closed without adding them.
+	(``<ExrcPric Ccy="BRL">27.35</ExrcPric>``), so a path that reads element text cannot see it and
+	the consolidated reader silently dropped it.
 
-	This pins the invariant that decision rests on, so a future file that *does* diverge fails here
-	instead of silently mislabelling a currency.
+	``TRADG_CCY`` is **not** a substitute. Measured on a real ``IN260729``: 1,074 values carry a
+	``@Ccy`` while their record has no ``TradgCcy`` at all — ``IssePric`` in USD/EUR/MXN/XXX,
+	``MtrtyVal``, ``BaseDtPric``. For those the currency is simply unrecoverable without reading
+	the attribute, so the companion columns are the only correct answer.
 	"""
 	df_out = InstrumentsFileReader(_SESSION).read()
 
-	# The two decimal columns that carry @Ccy in the real file must never be currency-orphaned.
-	for str_col in ("EXRC_PRIC", "MKT_CPTLSTN"):
-		series_present = df_out[str_col].notna()
-		assert series_present.any(), f"{str_col} absent from the sample — fixture drifted"
-		assert not (series_present & df_out["TRADG_CCY"].isna()).any(), (
-			f"{str_col} has a value with no TRADG_CCY — the currency is unrecoverable"
+	for str_value, str_ccy in (("EXRC_PRIC", "EXRC_PRIC_CCY"), ("MKT_CPTLSTN", "MKT_CPTLSTN_CCY")):
+		series_present = df_out[str_value].notna()
+		assert series_present.any(), f"{str_value} absent from the sample — fixture drifted"
+		assert not (series_present & df_out[str_ccy].isna()).any(), (
+			f"{str_value} has a value with no {str_ccy} — the currency attribute was dropped"
 		)
+		# A currency without a value would mean the attribute path resolved off the wrong element.
+		assert not (df_out[str_ccy].notna() & ~series_present).any(), str_ccy
 
-	# The multiplier and quantity columns are not money and carry no @Ccy in the real file, so a
-	# companion currency column for either of them would be null forever.
-	assert set(df_out["TRADG_CCY"].dropna()) <= {"BRL", "USD"}
+
+def test_currency_columns_are_iso_4217_codes(_patch_download: None) -> None:
+	"""The currency companions carry ISO-4217 codes, not the numeric value they belong to.
+
+	Guards the attribute path resolving to the element's *text* instead of its attribute — which
+	would silently fill the column with prices and still look populated.
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	for str_ccy in ("EXRC_PRIC_CCY", "MKT_CPTLSTN_CCY"):
+		set_values = set(df_out[str_ccy].dropna())
+		assert set_values, f"{str_ccy} entirely null — the attribute path did not resolve"
+		assert all(len(v) == 3 and v.isalpha() for v in set_values), f"{str_ccy}: {set_values}"
 
 
 def test_build_url_is_date_addressed() -> None:

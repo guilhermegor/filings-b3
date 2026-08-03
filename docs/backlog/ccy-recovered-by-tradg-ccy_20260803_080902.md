@@ -1,60 +1,89 @@
-# #147 — a moeda dos valores já é recuperável por `TRADG_CCY`
+# #147 — a moeda dos valores monetários vira coluna própria
 
-Branch: `fix/147-ccy-recovered-by-tradg-ccy`. Closes #147.
+Branch: `fix/147-ccy-recovered-by-tradg-ccy` (o nome ficou da primeira abordagem, que foi
+**revertida** — ver abaixo). Closes #147.
 
 ## Checklist
 
-- [x] Medir se `@Ccy` diverge de `TradgCcy` em arquivos reais
-- [x] Teste de regressão que trava a invariante (com *should-fail* nos dois sentidos)
-- [x] Documentar a invariante na página do reader consolidado
-- [ ] Sem `/release` ao mergear — nenhuma mudança de comportamento no artefato
+- [x] Varrer **todos** os atributos descartados, não só `@Ccy`
+- [x] `EXRC_PRIC_CCY` e `MKT_CPTLSTN_CCY` no reader consolidado
+- [x] Oráculo de deriva passa a excluir colunas derivadas de atributo (por forma do caminho)
+- [x] Testes: presença pareada + forma ISO-4217 + regra do oráculo — *should-fail* nos dois
+- [x] Auditar os 18 readers já entregues à procura da mesma lacuna
+- [x] Regra permanente em `_internal/config/contracts/CLAUDE.md` + lição no store BlueprintX
+- [x] Docs da página do reader consolidado
+- [ ] `/release` ao mergear (é `fix:` → PATCH; agora **muda o artefato**: 2 colunas novas)
 
-## A premissa da issue não se sustenta
+## A reversão, e por que ela importa
 
-#147 pedia colunas `<COL>_CCY` para cinco colunas decimais do reader consolidado, partindo de que
-a moeda estava sendo descartada. Duas coisas derrubam isso:
+Este branch começou fechando #147 **sem** adicionar as colunas, com o argumento de que `TRADG_CCY`
+já recuperava a moeda — sustentado por uma reconciliação de **371.656 registros** com **zero**
+divergências entre `@Ccy` e `TradgCcy`.
 
-1. **O reader já mapeia `TRADG_CCY`** (`instruments_file.py:82`, `InstrmInf/*/TradgCcy`). A moeda
-   nunca esteve perdida.
-2. **`@Ccy` nunca diverge de `TradgCcy`.** Medido nos arquivos reais, varrendo o XML cru:
+**O argumento estava errado, e a medição é que enganou.** Ela varria uma **lista de tags escolhida
+a mão**, que justamente **excluía** as tags onde a invariante falha. Enumerando todos os atributos
+do arquivo, o mesmo `IN260729` tem **1.074 valores com `@Ccy` em registros que não têm `TradgCcy`
+nenhum**:
 
-   | arquivo | registros | linhas com `@Ccy != TradgCcy` |
-   |---|---|---|
-   | `IN260729` | 183.164 | **0** |
-   | `IN260731` | 188.492 | **0** |
+| tag | linhas | `@Ccy` | `TradgCcy` |
+|---|---|---|---|
+| `IssePric` | 374 | **USD 314, EUR 53, MXN 5, XXX 2** | `None` |
+| `MtrtyVal` | 373 | BRL | `None` |
+| `BaseDtPric` | 327 | BRL | `None` |
 
-   Total **371.656** registros, incluindo todos os casos em USD (`ExrcPric` USD 834+796,
-   `Ppsn` USD 31+31). Cobre `ExrcPric`, `MktCptlstn`, `RghtsIssePric`, `LastPric`, `FrstPric`,
-   `Ppsn`.
-
-Além disso, **duas das cinco colunas pedidas nunca carregam `@Ccy`**: `CtrctMltplr` e `AsstQtnQty`
-aparecem 8.939 e 8.986 vezes, **sempre sem o atributo** — são multiplicador e quantidade, não
-dinheiro. Criar `CTRCT_MLTPLR_CCY` e `ASST_QTN_QTY_CCY` produziria colunas nulas para sempre.
-
-Decisão do usuário: fechar sem adicionar colunas, deixando um **gate** no lugar da memória.
+Nesses casos a moeda **só** existe no atributo. Lição registrada: *uma correlação medida sobre um
+conjunto que você escolheu é evidência sobre a sua escolha, não sobre o dado.* As tags que a gente
+esquece de listar são exatamente as que se comportam diferente — é por isso que a gente esqueceu.
 
 ## O que entrou
 
-Só um teste e um trecho de documentação. Zero mudança em `_DICT_PATHS`, zero coluna nova, zero
-impacto no `check_contract_drift` (o conjunto de 52 colunas segue idêntico) — que era exatamente
-a preocupação registrada na issue sobre mexer no contrato público.
+Duas colunas no reader consolidado, cada uma colada ao seu valor:
 
-`test_tradg_ccy_recovers_the_currency_of_every_monetary_value` afirma que nenhuma linha com
-`EXRC_PRIC`/`MKT_CPTLSTN` preenchido fica sem `TRADG_CCY`. Exercitado nos dois sentidos: apontando
-`TRADG_CCY` para uma tag inexistente o teste **falha**; restaurado, os 6 testes passam. Sem isso
-seria só mais um teste verde que não examina nada.
+| valor | moeda | linhas preenchidas (`IN260729`) |
+|---|---|---|
+| `EXRC_PRIC` | **`EXRC_PRIC_CCY`** | 142.164 (BRL 141.330 · USD 834) |
+| `MKT_CPTLSTN` | **`MKT_CPTLSTN_CCY`** | 14.623 (BRL) |
 
-## Ressalva de verificação
+Zero órfãos nos dois sentidos: nenhum valor sem moeda, nenhuma moeda sem valor. O reader passa de
+52 para **54** colunas.
 
-A reconciliação dos 371.656 registros foi feita **sobre o XML cru** (`iterparse` direto nos dois
-`IN*.zip`), não através de uma execução completa do reader — o reader baixa da rede e a fixture de
-50 registros não contém linhas com esses decimais preenchidos. O XML cru é a mesma fonte de onde os
-caminhos do reader leem, então a invariante medida é a que importa; mas o número **não** vem de uma
-execução ponta-a-ponta.
+`CTRCT_MLTPLR` e `ASST_QTN_QTY` seguem sem companheira: 8.939 e 8.986 ocorrências, **todas** sem
+`@Ccy` — são multiplicador e quantidade, não dinheiro.
+
+## O oráculo de deriva
+
+`mapped_columns()` passa a **excluir** colunas derivadas de atributo, e a exclusão é derivada da
+**forma do caminho** (`"/@" in path`), não de uma lista de nomes — então a próxima coluna de
+atributo é tratada sozinha, sem editar a função.
+
+Motivo: o layout UP2DATA enumera **campos** achatados e não tem como declarar um atributo XML.
+Contá-las reportaria deriva no instante em que o reader passa a ler **mais** da fonte do que o
+layout achatado consegue expressar — o oráculo puniria a leitura mais completa. O conjunto
+comparado segue sendo **52**, idêntico ao de antes.
+
+## Auditoria das entregas passadas (o pedido explícito do usuário)
+
+Varredura dos 18 readers contra o arquivo real, nos dois pregões (`IN260729` e `IN260731`),
+comparando "folhas mapeadas como valor" × "duplas (folha, atributo) mapeadas":
+
+- **17 readers por sub-bloco: limpos.** Já traziam todos os atributos (`ADRInf` 1, `EqtyInf` 4,
+  `FxdIncmNonTrdblInf` 3, `NtlBdInf` 2, `IntlBdInf` 1, `OptnOnEqtsInf` 1,
+  `OptnOnSpotAndFutrsInf` 1).
+- **1 com lacuna: o consolidado** — `ExrcPric/@Ccy` (142.164) e `MktCptlstn/@Ccy` (14.623).
+  Corrigido aqui.
+- **Fora da família de instrumentos não há readers XML.** `grep -rl read_xml src/` retorna só o
+  seam e a família de instrumentos; `daily_bulletin` lê CSV/JSON, onde atributo não existe.
+
+**Nenhuma issue nova foi necessária** — a única lacuna era esta, e ela está fechada neste PR.
+
+## O modo de falha que os testes cobrem
+
+O quase-acerto perigoso é o caminho do atributo cair no **texto** do elemento: a coluna enche com
+`27.35` em vez de `BRL` e **continua parecendo preenchida**. Por isso um dos testes afirma a
+**forma** do valor (ISO-4217, 3 letras), não só não-nulo. Exercitado: trocando o caminho para o
+texto, o teste falha; restaurado, passa.
 
 ## Aberto
 
-- Os readers **por sub-bloco** seguem com as colunas `<COL>_CCY` (projetam o atributo direto). As
-  duas visões são consistentes; o consolidado só não duplica. Nada a fazer.
-- Se um pregão futuro trouxer `@Ccy` divergente de `TradgCcy`, o teste falha — e aí a decisão de
-  #147 deve ser reaberta com o dado novo em mãos.
+- Nada pendente nesta família. Se um pregão futuro trouxer um valor monetário novo no consolidado,
+  a regra do `contracts/CLAUDE.md` manda mapear o atributo junto.
