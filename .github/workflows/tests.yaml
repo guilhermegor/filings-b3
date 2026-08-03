@@ -46,17 +46,10 @@ jobs:
           virtualenvs-create: true
           version: 2.2.1
 
-      - name: Load Cached Virtual Environment
-        id: cached-venv
-        uses: actions/cache@v6
-        with:
-          path: |
-            .venv
-            poetry.lock
-          key: venv-${{ runner.os }}-3.10-${{ hashFiles('pyproject.toml') }}
-
-      - name: Install Dependencies
-        if: steps.cached-venv.outputs.cache-hit != 'true'
+      # Unconditional, and BEFORE the cache restore — a gate guarded by `cache-hit != 'true'`
+      # is switched off by exactly the condition that makes it cheap, so on a warm cache it
+      # would never run. Kept ahead of the restore so it validates the committed tree.
+      - name: Validate Lock File
         # Same fail-loud-on-stale-lock contract as the test job: never regenerate the lock in
         # CI, since that silently re-resolves every dependency to the latest in-range version.
         run: |
@@ -64,7 +57,24 @@ jobs:
             echo "::error::poetry.lock is out of sync with pyproject.toml — run 'poetry lock' locally and commit the result." >&2
             exit 1
           fi
-          poetry install --no-interaction --no-root
+
+      - name: Load Cached Virtual Environment
+        id: cached-venv
+        uses: actions/cache@v6
+        with:
+          # `.venv` only — never a tracked file. Caching poetry.lock let a restored cache
+          # overwrite the committed lockfile, so the gate above would validate a cache
+          # artifact instead of the tree. Cache build output, never versioned source.
+          path: .venv
+          # The lock must be in the key: hashing pyproject.toml alone makes every lock-only
+          # change a cache hit — precisely the diff Dependabot's `versioning-strategy:
+          # lockfile-only` produces, so every bump PR would restore a pre-bump .venv, skip
+          # the install and go green testing the dependency set it was meant to change.
+          key: venv-${{ runner.os }}-3.10-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+
+      - name: Install Dependencies
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
 
       - name: Run Ruff Linting
         run: poetry run ruff check src/ tests/ --config=ruff.toml
@@ -108,14 +118,37 @@ jobs:
           virtualenvs-create: true
           version: 2.2.1
 
+      # Unconditional, BEFORE the cache restore and BEFORE the step that rewrites
+      # pyproject.toml — so it validates the same committed tree a developer checks locally.
+      # Guarded by `cache-hit != 'true'` it was switched off by exactly the condition that
+      # makes it cheap, and run after the rewrite it graded a file that is not in the repo.
+      - name: Validate Lock File
+        # Fail loud on a stale lock instead of silently regenerating it. A poetry.lock
+        # that no longer matches pyproject.toml means dependencies changed without
+        # re-locking; regenerating here (rm + poetry lock) would re-resolve and upgrade
+        # every dependency to the latest in-range version — a non-reproducible build that
+        # can silently pull a breaking release. Require an intentional `poetry lock` +
+        # commit instead. (A version bump does NOT invalidate the lock — only a dependency
+        # change does — so `make bump_version` never trips this.)
+        run: |
+          if ! poetry check --lock; then
+            echo "::error::poetry.lock is out of sync with pyproject.toml — run 'poetry lock' locally and commit the result." >&2
+            exit 1
+          fi
+
       - name: Load Cached Virtual Environment
         id: cached-venv
         uses: actions/cache@v6
         with:
-          path: |
-            .venv
-            poetry.lock
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          # `.venv` only — never a tracked file. Caching poetry.lock let a restored cache
+          # overwrite the committed lockfile, so the gate above would validate a cache
+          # artifact instead of the tree. Cache build output, never versioned source.
+          path: .venv
+          # The lock must be in the key: hashing pyproject.toml alone makes every lock-only
+          # change a cache hit — precisely the diff Dependabot's `versioning-strategy:
+          # lockfile-only` produces, so every bump PR would restore a pre-bump .venv, skip
+          # the install and go green testing the dependency set it was meant to change.
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
 
       - name: Install Dependencies
         if: steps.cached-venv.outputs.cache-hit != 'true'
@@ -129,18 +162,6 @@ jobs:
               content = re.sub(r"pywin32\s*=.*\n", "", content)
           print(content)
           ' > pyproject.toml
-
-          # Fail loud on a stale lock instead of silently regenerating it. A poetry.lock
-          # that no longer matches pyproject.toml means dependencies changed without
-          # re-locking; regenerating here (rm + poetry lock) would re-resolve and upgrade
-          # every dependency to the latest in-range version — a non-reproducible build that
-          # can silently pull a breaking release. Require an intentional `poetry lock` +
-          # commit instead. (A version bump does NOT invalidate the lock — only a dependency
-          # change does — so `make bump_version` never trips this.)
-          if ! poetry check --lock; then
-            echo "::error::poetry.lock is out of sync with pyproject.toml — run 'poetry lock' locally and commit the result." >&2
-            exit 1
-          fi
 
           echo "No groups to exclude, installing all dependencies"
           poetry install --no-interaction --no-root
