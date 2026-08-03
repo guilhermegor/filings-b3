@@ -766,6 +766,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#a-moeda-dos-valores-monetarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A moeda dos valores monetários
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1479,6 +1490,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#a-moeda-dos-valores-monetarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A moeda dos valores monetários
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1565,6 +1587,30 @@ Calcule-o e passe explicitamente.</p>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;source_key&quot;</span><span class="p">,</span> <span class="s2">&quot;content_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;updated_at&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </span></code></pre></div>
+<h3 id="a-moeda-dos-valores-monetarios">A moeda dos valores monetários<a class="headerlink" href="#a-moeda-dos-valores-monetarios" title="Permanent link">&para;</a></h3>
+<p>No ISO-20022 a moeda de um valor é um <strong>atributo</strong> do próprio elemento do valor, não um elemento
+irmão:</p>
+<div class="language-xml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">&lt;ExrcPric</span><span class="w"> </span><span class="na">Ccy=</span><span class="s">&quot;BRL&quot;</span><span class="nt">&gt;</span>27.35<span class="nt">&lt;/ExrcPric&gt;</span>
+</span></code></pre></div>
+<p>Cada valor monetário vem com a sua coluna companheira de moeda — <code>EXRC_PRIC</code> → <strong><code>EXRC_PRIC_CCY</code></strong>,
+<code>MKT_CPTLSTN</code> → <strong><code>MKT_CPTLSTN_CCY</code></strong> (issue #147):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">monetarios</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;EXRC_PRIC&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">monetarios</span><span class="p">[[</span><span class="s2">&quot;TCKR_SYMB&quot;</span><span class="p">,</span> <span class="s2">&quot;EXRC_PRIC&quot;</span><span class="p">,</span> <span class="s2">&quot;EXRC_PRIC_CCY&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</span></code></pre></div>
+<p><strong><code>TRADG_CCY</code> não substitui essas colunas.</strong> Ela é a moeda de <em>negociação</em> do instrumento, e nem
+sempre coincide com a moeda do valor. Medido em um <code>IN260729</code> real: <strong>1.074 valores carregam <code>@Ccy</code>
+em registros que não têm <code>TradgCcy</code> nenhum</strong> — <code>IssePric</code> em USD/EUR/MXN/XXX, <code>MtrtyVal</code> e
+<code>BaseDtPric</code>. Nesses casos a moeda só existe no atributo.</p>
+<p><code>CTRCT_MLTPLR</code> e <code>ASST_QTN_QTY</code> não têm companheira de moeda: são um multiplicador e uma
+quantidade, não dinheiro, e não carregam <code>@Ccy</code> no arquivo real.</p>
+<blockquote>
+<p>As colunas <code>_CCY</code> <strong>não entram</strong> na comparação do <code>bin/check_contract_drift.py</code>. O layout UP2DATA
+enumera <em>campos</em> achatados e nunca declara um atributo XML, então contá-las reportaria deriva
+contra um layout que não tem como listá-las. A regra vale para qualquer caminho terminado em
+<code>/@Attr</code>, não para uma lista de nomes.</p>
+</blockquote>
+<p>Os <em>readers por sub-bloco</em> (<code>InstrumentsFileEqtyReader</code> e irmãos) seguem a mesma convenção, com uma
+cobertura maior de valores monetários (<code>FRST_PRIC_CCY</code>, <code>LAST_PRIC_CCY</code>, <code>RGHTS_ISSE_PRIC_CCY</code>, …).</p>
 
 
 

@@ -2052,6 +2052,17 @@ privado, mais os alertas do Dependabot e as atualizações de segurança. Bumps 
 separados — veja <code>.github/dependabot.yml</code>, que usa <code>versioning-strategy: lockfile-only</code> para
 atualizar o <code>poetry.lock</code> (mantendo a CI honesta sobre o que os consumidores instalam) sem nunca
 reescrever suas faixas do <code>pyproject</code>.</p>
+<blockquote>
+<p><strong>A chave do cache do venv precisa hashear o <code>poetry.lock</code>.</strong> Essa honestidade não é automática:
+um PR de bump <code>lockfile-only</code> produz, por construção, um diff que <strong>só</strong> toca o lockfile. Se a
+chave do cache hasheasse apenas o <code>pyproject.toml</code> (o defeito de #169), todo bump seria um <em>cache
+hit</em>, restauraria um <code>.venv</code> pré-bump, <strong>pularia a instalação</strong> e ficaria verde testando
+exatamente o conjunto de dependências que o PR se propunha a mudar. Como a classe <code>deps</code>
+entra no auto-merge tendo "a suíte de testes" como gate, isso mergeia bumps sem que nada os
+tenha exercitado. Os três workflows hasheiam <code>poetry.lock</code> <strong>e</strong> <code>pyproject.toml</code>, cacheiam
+só <code>.venv</code> (nunca um arquivo versionado) e rodam <code>poetry check --lock</code> como step próprio e
+incondicional, antes do restore do cache.</p>
+</blockquote>
 <h2 id="fluxo-automatizado-de-pr-o-quality-gate">Fluxo automatizado de PR (o quality gate)<a class="headerlink" href="#fluxo-automatizado-de-pr-o-quality-gate" title="Permanent link">&para;</a></h2>
 <p>Todo PR é classificado por <code>bin/pr_gate.py</code> (workflow <code>pr-gate.yaml</code>), que o rotula, posta um único
 comentário fixo com uma tabela de status por eixo, e entrega as <strong>classes seguras</strong> ao auto-merge
