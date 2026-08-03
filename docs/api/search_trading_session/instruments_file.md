@@ -81,3 +81,27 @@ df = InstrumentsFileReader(
 
 print(df[["source_key", "content_hash", "updated_at"]].iloc[0])
 ```
+
+### A moeda dos valores monetários
+
+No ISO-20022 a moeda de um valor é um **atributo** do próprio elemento do valor
+(`<ExrcPric Ccy="BRL">27.35</ExrcPric>`), não um elemento irmão — então parece, à primeira vista,
+que o reader consolidado descarta a moeda das suas colunas decimais.
+
+Ele não descarta: a coluna **`TRADG_CCY`** é a moeda de negociação do registro, e ela é a moeda dos
+valores monetários daquela linha. Reconciliado sobre **371.656 registros** de dois pregões reais
+(`IN260729` e `IN260731`): o atributo `@Ccy` **nunca** divergiu do `TradgCcy` do próprio registro,
+incluindo todos os casos em USD. Não há, portanto, colunas `<COL>_CCY` no reader consolidado — elas
+seriam uma cópia de `TRADG_CCY` (issue #147).
+
+```python
+monetarios = df[df["EXRC_PRIC"].notna()]
+print(monetarios[["TCKR_SYMB", "EXRC_PRIC", "TRADG_CCY"]].head())
+```
+
+`CTRCT_MLTPLR` e `ASST_QTN_QTY` são um multiplicador e uma quantidade — não são dinheiro e não
+carregam `@Ccy` no arquivo real.
+
+> Os *readers por sub-bloco* (`InstrumentsFileEqtyReader` e irmãos) **têm** colunas companheiras
+> `<COL>_CCY`, porque projetam o atributo diretamente. As duas visões são consistentes; o reader
+> consolidado apenas não duplica a informação.

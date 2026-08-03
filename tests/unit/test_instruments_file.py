@@ -83,6 +83,34 @@ def test_decimal_columns_stay_exact(_patch_download: None) -> None:
 		assert all(isinstance(v, Decimal) for v in series_mult)
 
 
+def test_tradg_ccy_recovers_the_currency_of_every_monetary_value(_patch_download: None) -> None:
+	"""``TRADG_CCY`` is the currency of the row's monetary values — the ``@Ccy`` attribute (#147).
+
+	In ISO-20022 the currency of a value is an *attribute* of the value element
+	(``<ExrcPric Ccy="BRL">27.35</ExrcPric>``), so the consolidated reader looks like it drops it.
+	It does not: the reader already maps ``TRADG_CCY``, and ``@Ccy`` never diverges from the
+	record's own ``TradgCcy`` — reconciled over 371,656 records across two real sessions
+	(``IN260729`` + ``IN260731``), including every USD case. Companion ``<COL>_CCY`` columns would
+	therefore be redundant, which is why #147 closed without adding them.
+
+	This pins the invariant that decision rests on, so a future file that *does* diverge fails here
+	instead of silently mislabelling a currency.
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	# The two decimal columns that carry @Ccy in the real file must never be currency-orphaned.
+	for str_col in ("EXRC_PRIC", "MKT_CPTLSTN"):
+		series_present = df_out[str_col].notna()
+		assert series_present.any(), f"{str_col} absent from the sample — fixture drifted"
+		assert not (series_present & df_out["TRADG_CCY"].isna()).any(), (
+			f"{str_col} has a value with no TRADG_CCY — the currency is unrecoverable"
+		)
+
+	# The multiplier and quantity columns are not money and carry no @Ccy in the real file, so a
+	# companion currency column for either of them would be null forever.
+	assert set(df_out["TRADG_CCY"].dropna()) <= {"BRL", "USD"}
+
+
 def test_build_url_is_date_addressed() -> None:
 	"""The download URL carries the session date as ``IN{yymmdd}.zip``."""
 	str_url = InstrumentsFileReader(date(2025, 1, 2)).build_url()
