@@ -57,7 +57,11 @@ from filings_b3._internal.utils.retry import LogEmitter, RetryPolicy
 from filings_b3._internal.utils.tabular_reader import FileContract
 from filings_b3._internal.utils.typing import type_checker
 from filings_b3._internal.utils.xml_reader import read_xml
-from filings_b3._internal.utils.zip_extractor import extract_all
+from filings_b3._internal.utils.zip_extractor import (
+	extract_members,
+	list_member_names,
+	peek_member,
+)
 from filings_b3.search_trading_session._base_pregao_reader import PREGAO_DOWNLOAD_BASE
 
 
@@ -103,16 +107,19 @@ _REQUIRED_ATTRS: tuple[str, ...] = ("str_source_key", "cls_contract")
 
 
 @type_checker
-def _snapshot_stamp(path_xml: Path) -> str:
-	"""Return the ``CreDtAndTm`` a snapshot declares in its header.
+def _snapshot_stamp(path_zip: Path, str_member: str) -> str:
+	"""Return the ``CreDtAndTm`` a snapshot declares in its header, without extracting it.
 
 	The stamp is ISO-8601 (``2026-07-29T18:39:48``), so it sorts correctly as text — no parsing
-	needed to order two snapshots of the same session.
+	needed to order two snapshots of the same session. Only the header is decompressed: a
+	snapshot's body runs to hundreds of megabytes, and dating it must not cost a read of it.
 
 	Parameters
 	----------
-	path_xml : pathlib.Path
-		An extracted BVBG.028.02 XML.
+	path_zip : pathlib.Path
+		The archive holding the snapshots.
+	str_member : str
+		The BVBG.028.02 XML member to date.
 
 	Returns
 	-------
@@ -125,12 +132,10 @@ def _snapshot_stamp(path_xml: Path) -> str:
 		If the header does not declare one — without it there is no way to tell which snapshot
 		is current, and picking the wrong one silently drops instruments.
 	"""
-	with path_xml.open("rb") as file_xml:
-		bytes_head = file_xml.read(_HEADER_PROBE_BYTES)
-	match_stamp = _RE_SNAPSHOT_STAMP.search(bytes_head)
+	match_stamp = _RE_SNAPSHOT_STAMP.search(peek_member(path_zip, str_member, _HEADER_PROBE_BYTES))
 	if match_stamp is None:
 		raise ValueError(
-			f"no <CreDtAndTm> in the first {_HEADER_PROBE_BYTES} bytes of {path_xml.name}"
+			f"no <CreDtAndTm> in the first {_HEADER_PROBE_BYTES} bytes of {str_member}"
 		)
 	return match_stamp.group(1).decode()
 
@@ -316,31 +321,40 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		Returns
 		-------
 		pathlib.Path
-			The extracted XML file of the latest snapshot.
+			The extracted XML file of the latest snapshot — the **only** member written to disk.
 
 		Raises
 		------
 		ValueError
 			If the archive holds no ``.xml`` member at all, or if a snapshot does not declare
 			its ``CreDtAndTm`` (fail loudly rather than guess which snapshot is current).
+
+		Notes
+		-----
+		The snapshots are dated from their headers *inside* the archive, so only the winner is
+		ever extracted: writing every snapshot out would cost hundreds of megabytes of disk per
+		read to then parse one of them.
 		"""
-		list_xml: list[Path] = []
-		list_pending = [path_download]
-		set_seen: set[Path] = set()
-		while list_pending:
-			path_archive = list_pending.pop()
-			if path_archive in set_seen:
-				continue
-			set_seen.add(path_archive)
-			for path_member in extract_all(path_archive, path_dir):
-				str_suffix = path_member.suffix.lower()
-				if str_suffix == ".xml":
-					list_xml.append(path_member)
-				elif str_suffix == ".zip":
-					list_pending.append(path_member)
-		if not list_xml:
-			raise ValueError(f"no .xml member in {path_download.name}")
-		return max(list_xml, key=_snapshot_stamp)
+		path_archive = path_download
+		set_seen: set[str] = set()
+		while True:
+			list_names = list_member_names(path_archive)
+			list_xml = [str_name for str_name in list_names if str_name.lower().endswith(".xml")]
+			if list_xml:
+				dict_stamps = {
+					str_name: _snapshot_stamp(path_archive, str_name) for str_name in list_xml
+				}
+				str_latest = max(dict_stamps, key=dict_stamps.__getitem__)
+				return extract_members(path_archive, path_dir, [str_latest])[0]
+			list_zip = [
+				str_name
+				for str_name in list_names
+				if str_name.lower().endswith(".zip") and str_name not in set_seen
+			]
+			if not list_zip:
+				raise ValueError(f"no .xml member in {path_download.name}")
+			set_seen.add(list_zip[0])
+			path_archive = extract_members(path_archive, path_dir, [list_zip[0]])[0]
 
 	def read(self) -> pd.DataFrame:
 		"""Fetch, flatten, and provenance-stamp this reader's projection of the file.
@@ -355,7 +369,8 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		ContractError
 			When the flattened frame violates :attr:`cls_contract`.
 		ValueError
-			When the archive does not hold exactly one XML member.
+			When the archive holds no XML member, or when a snapshot inside it does not declare
+			its ``CreDtAndTm``.
 
 		Notes
 		-----

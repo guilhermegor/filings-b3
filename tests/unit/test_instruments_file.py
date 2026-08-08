@@ -166,6 +166,22 @@ def test_read_takes_the_latest_snapshot_of_the_session(_patch_download: None) ->
 	assert {"CMIG3 BZ", "GFSA3 BZ", "OTCGOVSPEC"} <= set(df_out["TCKR_SYMB"])
 
 
+def test_read_extracts_only_the_snapshot_it_will_parse(
+	_patch_download: None, tmp_path: Path
+) -> None:
+	"""Only the winning snapshot reaches the disk — the losers are dated, never extracted.
+
+	Each snapshot of a real session is ~660 MB, so extracting all of them to then parse one
+	costs over a gigabyte of writes per read. The snapshots are dated from their headers
+	*inside* the archive (a few KB each), which is why this holds.
+	"""
+	InstrumentsFileReader(_SESSION, path_raw=tmp_path).read()
+
+	assert [path_out.name for path_out in tmp_path.glob("*.xml")] == [
+		"BVBG.028.02_BV000327202607290327148364053508967.xml"
+	]
+
+
 def test_read_raises_when_a_snapshot_does_not_declare_its_generation_time(
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
