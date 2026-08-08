@@ -701,6 +701,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#qual-xml-de-dentro-do-arquivo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qual XML de dentro do arquivo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#memoria" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1453,6 +1464,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#qual-xml-de-dentro-do-arquivo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qual XML de dentro do arquivo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#memoria" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1574,7 +1596,7 @@ que <strong>não</strong> cabe nessa forma — a família <code>instruments_file
 reaproveitando os mesmos <em>seams</em> internos (download com <em>retry</em>, retenção do artefato bruto,
 proveniência), mas achatando o XML pelo <em>seam</em> <code>xml_reader</code> em vez de ler uma tabela.</p>
 <h3 id="um-download-dezoito-readers">Um download, dezoito <em>readers</em><a class="headerlink" href="#um-download-dezoito-readers" title="Permanent link">&para;</a></h3>
-<p>O <code>IN{aammdd}.zip</code> traz <strong>um</strong> XML em que cada registro <code>&lt;Instrm&gt;</code> aninha os seus campos
+<p>O <code>IN{aammdd}.zip</code> traz XML em que cada registro <code>&lt;Instrm&gt;</code> aninha os seus campos
 específicos sob <strong>exatamente um</strong> de 20 blocos <code>&lt;InstrmInf&gt;</code>. Daí duas formas de ler o mesmo
 arquivo:</p>
 <table>
@@ -1601,6 +1623,15 @@ arquivo:</p>
 <p>Os <em>readers</em> por tipo herdam ainda as colunas de nível de registro comuns a todo instrumento
 (data de referência, identificação e atributos comuns), que vivem <strong>fora</strong> do bloco — é o que
 mantém os <em>frames</em> por tipo comparáveis entre si.</p>
+<h4 id="qual-xml-de-dentro-do-arquivo">Qual XML de dentro do arquivo<a class="headerlink" href="#qual-xml-de-dentro-do-arquivo" title="Permanent link">&para;</a></h4>
+<p>O download é um <code>.zip</code> cujo único membro é <strong>outro</strong> <code>.zip</code>, e é esse que traz os XML — <strong>um por
+<em>snapshot</em> intradiário</strong> que a B3 publicou para o pregão (nos arquivos conferidos, um de
+pré-abertura e um de pós-fechamento). Os <em>snapshots</em> são <strong>cumulativos</strong>: no <code>IN260729</code> o mais
+recente trazia os 183.164 instrumentos do primeiro <strong>mais 10</strong>, sem remover nenhum.</p>
+<p>Por isso todo <em>reader</em> da família lê o <em>snapshot</em> de <strong>maior <code>CreDtAndTm</code></strong> — o cabeçalho
+<code>BizFileHdr</code> de cada XML declara quando ele foi gerado. Ler qualquer outro descartaria em
+silêncio os registros tardios do pregão. Um <em>snapshot</em> sem <code>CreDtAndTm</code> faz o <em>reader</em> falhar
+alto, em vez de adivinhar qual é o vigente.</p>
 <p>Todo <em>reader</em> tem a mesma forma pública:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Reader</span><span class="p">(</span><span class="n">date_ref</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">path_raw</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reader</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">Reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>
