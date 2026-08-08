@@ -315,11 +315,17 @@ def peek_member(
 
 	Raises
 	------
+	ValueError
+		If ``int_bytes`` is negative. ``read(-1)`` means "read everything" to a file object,
+		so a negative value would silently decompress the whole member — the one outcome this
+		function exists to avoid.
 	FileNotFoundError
 		If ``path_zip`` does not exist.
 	KeyError
 		If ``str_member`` is not present in the archive.
 	"""
+	if int_bytes < 0:
+		raise ValueError(f"int_bytes must be non-negative, got {int_bytes}")
 	if not path_zip.exists():
 		raise FileNotFoundError(f"Zip not found: {path_zip}")
 	bytes_pwd = str_password.encode() if str_password else None
