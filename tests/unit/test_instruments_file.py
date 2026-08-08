@@ -1,18 +1,26 @@
 """Unit tests for the Pesquisa por Pregão instruments-file reader.
 
-The reader downloads ``IN{yymmdd}.zip`` (a ZIP of one BVBG.028.02 XML). These tests mock the
-download boundary — the one seam that touches the network — with a **real B3 sample**:
+The reader downloads ``IN{yymmdd}.zip``. These tests mock the download boundary — the one seam
+that touches the network — with a **real B3 sample**:
 ``tests/fixtures/instruments_IN_sample.zip`` is a 50-record slice of a genuine ``IN260729.zip``,
 trimmed to cover all 17 instrument sub-block types (equities, options, futures, fixed income,
 international/national bonds, cash, OTC, BTC, ADR, …). Reconciled live against the full file
 (issue #143): the row element is ``<Instrm>``, ``RptParams`` is per-record, and a ``*`` wildcard
 path resolves whichever sub-block a record carries.
+
+**The fixture reproduces the archive's real shape** (issue #180): a ZIP whose only member is
+another ZIP, holding one XML per intraday snapshot — an early partial (40 records,
+``CreDtAndTm`` 00:20:11) and the definitive post-close one (all 50, 18:39:48), the later written
+first so archive order cannot pass for snapshot selection. The previous fixture was a flat ZIP of
+a single XML, a shape B3 never publishes, which is why every reader in the family passed its
+tests while failing on every real file.
 """
 
 from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import io
 from pathlib import Path
 import shutil
 import zipfile
@@ -128,8 +136,8 @@ def test_build_url_is_date_addressed() -> None:
 	assert str_url.endswith("filelist=IN250102.zip")
 
 
-def test_read_raises_when_archive_has_no_single_xml(monkeypatch: pytest.MonkeyPatch) -> None:
-	"""An archive without exactly one XML member fails loudly, never guesses a member."""
+def test_read_raises_when_archive_holds_no_xml(monkeypatch: pytest.MonkeyPatch) -> None:
+	"""An archive with no XML member anywhere fails loudly, never guesses a member."""
 
 	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 0) -> Path:  # noqa: ARG001
 		with zipfile.ZipFile(path_dest, "w") as cls_zip:
@@ -138,5 +146,40 @@ def test_read_raises_when_archive_has_no_single_xml(monkeypatch: pytest.MonkeyPa
 
 	monkeypatch.setattr(http_downloader, "download_file", _fake_download)
 
-	with pytest.raises(ValueError, match="exactly one .xml"):
+	with pytest.raises(ValueError, match="no .xml member"):
+		InstrumentsFileReader(date(2025, 1, 2)).read()
+
+
+def test_read_takes_the_latest_snapshot_of_the_session(_patch_download: None) -> None:
+	"""Of the archive's intraday snapshots, the one with the greatest CreDtAndTm is read.
+
+	The snapshots are cumulative — measured on a real ``IN260729``, the post-close file held all
+	183,164 instruments of the pre-open one plus 10 more, and removed none. Reading the earlier
+	snapshot therefore drops the session's late registrations without any error. The fixture
+	mirrors that: 40 records early, all 50 late, and the *late* one written first in the archive
+	so a reader that took the first member (or the last) would land on the wrong count here.
+	"""
+	df_out = InstrumentsFileReader(_SESSION).read()
+
+	assert len(df_out) == 50
+	# These tickers are absent from the early snapshot, so they land only when the late one wins.
+	assert {"CMIG3 BZ", "GFSA3 BZ", "OTCGOVSPEC"} <= set(df_out["TCKR_SYMB"])
+
+
+def test_read_raises_when_a_snapshot_does_not_declare_its_generation_time(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	"""A snapshot with no CreDtAndTm fails loudly — an undated snapshot cannot be ordered."""
+
+	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 0) -> Path:  # noqa: ARG001
+		buf_inner = io.BytesIO()
+		with zipfile.ZipFile(buf_inner, "w") as cls_inner:
+			cls_inner.writestr("BVBG.028.02_UNDATED.xml", "<Document><BizFileHdr/></Document>")
+		with zipfile.ZipFile(path_dest, "w") as cls_outer:
+			cls_outer.writestr("IN250102.zip", buf_inner.getvalue())
+		return path_dest
+
+	monkeypatch.setattr(http_downloader, "download_file", _fake_download)
+
+	with pytest.raises(ValueError, match="no <CreDtAndTm>"):
 		InstrumentsFileReader(date(2025, 1, 2)).read()
