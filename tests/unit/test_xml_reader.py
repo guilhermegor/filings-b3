@@ -377,3 +377,88 @@ def test_read_xml_self_join_resolves_a_reference_to_another_record(tmp_path: Pat
 	assert df_out.loc[0, "UNDRLYG_TCKR_SYMB1"] == "DDIF38"
 	# Leg 2 points at an instrument absent from this file — unresolved, never a stale carry-over.
 	assert pd.isna(df_out.loc[0, "UNDRLYG_TCKR_SYMB2"])
+
+
+# The same document plus the header block a regulatory envelope uses to declare how many records
+# it carries. `{count}` is substituted so a test can make the declaration lie.
+_XML_COUNTED = _XML.replace(
+	"<BizGrp>",
+	"<BizFileHdr><BizGrpDtls><TtlNbOfMsg>{count}</TtlNbOfMsg></BizGrpDtls></BizFileHdr><BizGrp>",
+)
+_COUNT_PATH = "BizGrpDtls/TtlNbOfMsg"
+
+
+def _write_counted(path_dir: Path, str_declared: str) -> Path:
+	path_xml = path_dir / "counted.xml"
+	path_xml.write_text(_XML_COUNTED.format(count=str_declared), encoding="utf-8")
+	return path_xml
+
+
+def _read_counted(path_xml: Path, **kwargs: object) -> pd.DataFrame:
+	"""Read the counted document with the seam's count check on."""
+	return read_xml(
+		path_xml,
+		"InstrmRcrd",
+		_DICT_PATHS,
+		{"TICKER_SYMBOL": "str", "ASSET": "str", "ALLOCATION_ROUND_LOT": "int64"},
+		FileContract("Test Instruments", "test_instruments", ("TICKER_SYMBOL",), ()),
+		str_declared_count_path=_COUNT_PATH,
+		**kwargs,
+	)
+
+
+def test_read_xml_accepts_a_file_whose_declared_count_matches(tmp_path: Path) -> None:
+	"""A file that declares exactly what it carries reads normally."""
+	df_out = _read_counted(_write_counted(tmp_path, "2"))
+
+	assert list(df_out["TICKER_SYMBOL"]) == ["PETR4", "DOLF25"]
+
+
+def test_read_xml_raises_when_the_file_carries_fewer_records_than_it_declares(
+	tmp_path: Path,
+) -> None:
+	"""A truncated download is caught by the count the file declares about itself.
+
+	This is the failure mode the check exists for and the only one nothing else sees: every row
+	that arrived is individually valid, the XML is well-formed up to the cut, and the contract
+	and dtype gates both pass on a frame that is simply missing its tail.
+	"""
+	with pytest.raises(ValueError, match="declares 3 records but holds 2"):
+		_read_counted(_write_counted(tmp_path, "3"))
+
+
+def test_read_xml_counts_records_before_the_row_filter(tmp_path: Path) -> None:
+	"""The count is compared against every record present, not the ones the projection keeps.
+
+	Without this, the check would be usable only by a reader that keeps the whole file: each of
+	the seventeen per-sub-block readers of one heterogeneous source would fail by construction,
+	its handful of rows never matching the file's own total.
+	"""
+	df_out = _read_counted(_write_counted(tmp_path, "2"), str_row_filter="InstrmInf/EqtyInf")
+
+	assert list(df_out["TICKER_SYMBOL"]) == ["PETR4"]
+
+
+def test_read_xml_raises_when_the_declared_count_path_resolves_to_nothing(
+	tmp_path: Path,
+) -> None:
+	"""Asking for a count the file does not declare fails loudly rather than skipping the check."""
+	with pytest.raises(ValueError, match="no record count"):
+		_read_counted(_write(tmp_path))
+
+
+def test_read_xml_verifies_no_count_when_no_path_is_given(tmp_path: Path) -> None:
+	"""The check is opt-in: a caller that passes no path gets no verification, wrong count or not.
+
+	The seam presumes such a declaration *may* exist, never that it does — which is what keeps it
+	usable by a format that declares nothing, without a branch per source.
+	"""
+	df_out = read_xml(
+		_write_counted(tmp_path, "999"),
+		"InstrmRcrd",
+		_DICT_PATHS,
+		{"TICKER_SYMBOL": "str", "ASSET": "str", "ALLOCATION_ROUND_LOT": "int64"},
+		FileContract("Test Instruments", "test_instruments", ("TICKER_SYMBOL",), ()),
+	)
+
+	assert len(df_out) == 2

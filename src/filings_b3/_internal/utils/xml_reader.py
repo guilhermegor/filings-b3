@@ -260,6 +260,38 @@ def _scalar_from_candidate(cls_elem: Element, str_path: str) -> str | None:
 
 
 @type_checker
+def _check_declared_count(path_file: Path, str_declared: str | None, int_seen: int) -> None:
+	"""Verify the record count the file declares against the records actually parsed.
+
+	Parameters
+	----------
+	path_file : pathlib.Path
+		The XML that was read, named in the error.
+	str_declared : str or None
+		The declared count as the document spelled it, or ``None`` when the path did not resolve.
+	int_seen : int
+		How many record elements the parse actually saw.
+
+	Raises
+	------
+	ValueError
+		When the file declares no count at the requested path, declares a non-integer, or
+		declares a number the parse did not match.
+	"""
+	if str_declared is None:
+		raise ValueError(f"{path_file.name}: no record count at the declared-count path")
+	if not str_declared.isdigit():
+		raise ValueError(
+			f"{path_file.name}: declared record count {str_declared!r} is not a number"
+		)
+	if int(str_declared) != int_seen:
+		raise ValueError(
+			f"{path_file.name}: declares {str_declared} records but holds {int_seen} — "
+			"the download is incomplete"
+		)
+
+
+@type_checker
 def read_xml(
 	path_file: Path,
 	str_row_tag: str,
@@ -271,6 +303,7 @@ def read_xml(
 	list_decimal_cols: Sequence[str] | None = None,
 	str_row_filter: str | None = None,
 	dict_joins: Mapping[str, tuple[str, str, str]] | None = None,
+	str_declared_count_path: str | None = None,
 ) -> pd.DataFrame:
 	"""Flatten a namespaced XML into a typed, contract-validated DataFrame.
 
@@ -320,6 +353,17 @@ def read_xml(
 		**every** record in the file, not only the filtered rows, so a filtered per-type read can
 		still resolve references into types it excluded. Joining happens after all rows are read
 		and **before** contract validation and typing.
+	str_declared_count_path : str, optional
+		Path to a **record count the file declares about itself** — resolved like a scalar, but
+		never becoming a column, because it is a claim about the artifact rather than data. When
+		given, the parse counts record elements **before** ``str_row_filter`` and raises if the
+		two disagree. This is the only cheap defence against a **truncated download**, which is
+		invisible by construction: the parser reads the bytes that arrived, the XML is well-formed
+		up to the cut, and a smaller frame comes back with no error at all. The seam never learns
+		what the count is *called* — the caller passes the path, so a format that declares nothing
+		simply omits the argument and a format that declares it elsewhere passes its own path,
+		instead of this seam growing a branch per source. (B3's BVBG.028 declares
+		``BizGrpDtls/TtlNbOfMsg``.) ``None`` (default) verifies nothing.
 
 	Returns
 	-------
@@ -330,6 +374,9 @@ def read_xml(
 	------
 	ContractError
 		When the flattened frame violates ``cls_contract``.
+	ValueError
+		When ``str_declared_count_path`` is given and the file declares no count there, declares a
+		non-numeric one, or declares a number the parse did not match.
 	"""
 	# Lookup tables for the self-joins, keyed by primary-key path and value path together, so that
 	# joins sharing a target build it once. Populated from EVERY record, including filtered rows.
@@ -344,6 +391,14 @@ def read_xml(
 	}
 	dict_scalar_vals: dict[str, str | None] = dict.fromkeys(dict_scalars or {})
 
+	# The declared count is resolved with the same "match the head element as it closes" trick as a
+	# scalar, yet stays out of the frame, since it describes the artifact rather than the rows.
+	str_count_head = (
+		str_declared_count_path.partition("/")[0] if str_declared_count_path is not None else None
+	)
+	str_declared_count: str | None = None
+	int_records_seen = 0
+
 	list_rows: list[dict[str, str | None]] = []
 	for _, cls_elem in iterparse(str(path_file), events=("end",)):
 		str_local = _local_name(cls_elem.tag)
@@ -354,8 +409,19 @@ def read_xml(
 					cls_elem, (dict_scalars or {})[str_col]
 				)
 
+		if (
+			str_declared_count_path is not None
+			and str_declared_count is None
+			and (str_local == str_count_head)
+		):
+			str_declared_count = _scalar_from_candidate(cls_elem, str_declared_count_path)
+
 		if str_local != str_row_tag:
 			continue
+
+		# Counted before the row filter, because the declaration describes the whole file — a
+		# per-subtype read must compare against every record present, not the few it keeps.
+		int_records_seen += 1
 
 		for (str_pk, str_value), dict_lookup in dict_lookups.items():
 			str_key = _resolve_text(cls_elem, str_pk)
@@ -382,6 +448,11 @@ def read_xml(
 		# flat. What stays behind is one empty element per record, bytes rather than the gigabytes
 		# a fully materialised tree cost, plus the non-record elements scalars are read from.
 		cls_elem.clear()
+
+	# Checked before anything is projected or validated, because a truncated file's rows are each
+	# individually valid — every later gate would pass on data that is merely missing its tail.
+	if str_declared_count_path is not None:
+		_check_declared_count(path_file, str_declared_count, int_records_seen)
 
 	# Scalars and joins are applied here, not while building each row, because either may only
 	# resolve after some rows have already been emitted — a stream cannot look ahead.

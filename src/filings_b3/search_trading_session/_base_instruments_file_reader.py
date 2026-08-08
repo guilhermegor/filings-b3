@@ -78,6 +78,12 @@ _ROW_TAG: str = "Instrm"
 _RE_SNAPSHOT_STAMP: re.Pattern[bytes] = re.compile(rb"<CreDtAndTm>([^<]+)</CreDtAndTm>")
 _HEADER_PROBE_BYTES: int = 4096
 
+# Beside the generation time, the same header block declares how many records the snapshot carries
+# (`<Instrm>` is a "message" in ISO-20022 terms). Verified equal to the parsed count on both
+# snapshots of IN260729: 183.174 and 183.164. It is what tells a truncated download apart from a
+# quiet session — the seam takes the path, never the tag name.
+_DECLARED_COUNT_PATH: str = "BizGrpDtls/TtlNbOfMsg"
+
 # The per-record blocks that sit *outside* InstrmInf and are therefore common to every
 # instrument type: report parameters, the instrument identification, and the common attributes.
 # All 13 were observed on all 183,164 records of a real IN file (issue #143's fixture), which is
@@ -398,6 +404,7 @@ class _BaseInstrumentsFileReader(IngestionReader):
 					None if self.str_sub_block is None else f"InstrmInf/{self.str_sub_block}"
 				),
 				dict_joins=self.dict_joins,
+				str_declared_count_path=_DECLARED_COUNT_PATH,
 			)
 			return stamp_provenance(
 				df_typed,
