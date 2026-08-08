@@ -53,7 +53,7 @@ proveniência), mas achatando o XML pelo _seam_ `xml_reader` em vez de ler uma t
 
 ### Um download, dezoito _readers_
 
-O `IN{aammdd}.zip` traz **um** XML em que cada registro `<Instrm>` aninha os seus campos
+O `IN{aammdd}.zip` traz XML em que cada registro `<Instrm>` aninha os seus campos
 específicos sob **exatamente um** de 20 blocos `<InstrmInf>`. Daí duas formas de ler o mesmo
 arquivo:
 
@@ -65,6 +65,18 @@ arquivo:
 Os _readers_ por tipo herdam ainda as colunas de nível de registro comuns a todo instrumento
 (data de referência, identificação e atributos comuns), que vivem **fora** do bloco — é o que
 mantém os _frames_ por tipo comparáveis entre si.
+
+#### Qual XML de dentro do arquivo
+
+O download é um `.zip` cujo único membro é **outro** `.zip`, e é esse que traz os XML — **um por
+_snapshot_ intradiário** que a B3 publicou para o pregão (nos arquivos conferidos, um de
+pré-abertura e um de pós-fechamento). Os _snapshots_ são **cumulativos**: no `IN260729` o mais
+recente trazia os 183.164 instrumentos do primeiro **mais 10**, sem remover nenhum.
+
+Por isso todo _reader_ da família lê o _snapshot_ de **maior `CreDtAndTm`** — o cabeçalho
+`BizFileHdr` de cada XML declara quando ele foi gerado. Ler qualquer outro descartaria em
+silêncio os registros tardios do pregão. Um _snapshot_ sem `CreDtAndTm` faz o _reader_ falhar
+alto, em vez de adivinhar qual é o vigente.
 
 Todo _reader_ tem a mesma forma pública:
 

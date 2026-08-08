@@ -259,6 +259,84 @@ def extract_members_to_memory(
 
 
 @type_checker
+def list_member_names(path_zip: Path) -> list[str]:
+	"""Return the names of every member of ``path_zip``, extracting nothing.
+
+	The cheap look before the read — for deciding *which* member to pull out of an archive
+	whose members are too large to extract speculatively.
+
+	Parameters
+	----------
+	path_zip : pathlib.Path
+		The zip to inspect.
+
+	Returns
+	-------
+	list of str
+		The member names, in archive order.
+
+	Raises
+	------
+	FileNotFoundError
+		If ``path_zip`` does not exist.
+	"""
+	if not path_zip.exists():
+		raise FileNotFoundError(f"Zip not found: {path_zip}")
+	with zipfile.ZipFile(path_zip) as cls_zip:
+		return cls_zip.namelist()
+
+
+@type_checker
+def peek_member(
+	path_zip: Path, str_member: str, int_bytes: int, str_password: str | None = None
+) -> bytes:
+	"""Read the **first** ``int_bytes`` of a member, decompressing no further.
+
+	The companion to :func:`list_member_names` for archives whose members carry a header
+	worth reading (a declared generation time, a format marker) but whose bodies are far too
+	large to extract just to look at the top: the member is streamed and abandoned after the
+	requested prefix.
+
+	Parameters
+	----------
+	path_zip : pathlib.Path
+		The zip to read.
+	str_member : str
+		The archive member name.
+	int_bytes : int
+		How many decompressed bytes to read from the start of the member.
+	str_password : str, optional
+		ZipCrypto password; ``None`` for an unencrypted zip.
+
+	Returns
+	-------
+	bytes
+		The member's first ``int_bytes`` bytes (fewer if the member is shorter).
+
+	Raises
+	------
+	ValueError
+		If ``int_bytes`` is negative. ``read(-1)`` means "read everything" to a file object,
+		so a negative value would silently decompress the whole member — the one outcome this
+		function exists to avoid.
+	FileNotFoundError
+		If ``path_zip`` does not exist.
+	KeyError
+		If ``str_member`` is not present in the archive.
+	"""
+	if int_bytes < 0:
+		raise ValueError(f"int_bytes must be non-negative, got {int_bytes}")
+	if not path_zip.exists():
+		raise FileNotFoundError(f"Zip not found: {path_zip}")
+	bytes_pwd = str_password.encode() if str_password else None
+	with zipfile.ZipFile(path_zip) as cls_zip:
+		if str_member not in set(cls_zip.namelist()):
+			raise KeyError(f"Member {str_member!r} not in {path_zip}")
+		with cls_zip.open(str_member, pwd=bytes_pwd) as file_member:
+			return file_member.read(int_bytes)
+
+
+@type_checker
 def extract_member_to_memory(
 	path_zip: Path, str_member: str, str_password: str | None = None
 ) -> bytes:

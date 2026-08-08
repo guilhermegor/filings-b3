@@ -42,6 +42,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
+import re
 
 import pandas as pd
 
@@ -54,8 +55,13 @@ from filings_b3._internal.utils.provenance import (
 from filings_b3._internal.utils.raw_workspace import raw_workspace
 from filings_b3._internal.utils.retry import LogEmitter, RetryPolicy
 from filings_b3._internal.utils.tabular_reader import FileContract
+from filings_b3._internal.utils.typing import type_checker
 from filings_b3._internal.utils.xml_reader import read_xml
-from filings_b3._internal.utils.zip_extractor import extract_all
+from filings_b3._internal.utils.zip_extractor import (
+	extract_members,
+	list_member_names,
+	peek_member,
+)
 from filings_b3.search_trading_session._base_pregao_reader import PREGAO_DOWNLOAD_BASE
 
 
@@ -65,6 +71,12 @@ _DISTRIBUTION_NAME: str = "filings-b3"
 # Local name of the repeating instrument-record element, confirmed against a live IN file:
 # BVBG.028 wraps each instrument in <Instrm> (not the guessed <InstrmRcrd>).
 _ROW_TAG: str = "Instrm"
+
+# B3 publishes the session's instruments file more than once a day, and ships every snapshot in
+# the same archive. Each one declares when it was generated in its BizFileHdr, within the first
+# kilobyte — so the snapshot can be dated without parsing the ~660 MB body.
+_RE_SNAPSHOT_STAMP: re.Pattern[bytes] = re.compile(rb"<CreDtAndTm>([^<]+)</CreDtAndTm>")
+_HEADER_PROBE_BYTES: int = 4096
 
 # The per-record blocks that sit *outside* InstrmInf and are therefore common to every
 # instrument type: report parameters, the instrument identification, and the common attributes.
@@ -92,6 +104,40 @@ _COMMON_DATE_COLS: tuple[str, ...] = ("RPT_DT",)
 # Class attributes every concrete reader must define; checked at subclass-creation time so a
 # reader that forgets one fails loudly when the class is imported, not deep inside read().
 _REQUIRED_ATTRS: tuple[str, ...] = ("str_source_key", "cls_contract")
+
+
+@type_checker
+def _snapshot_stamp(path_zip: Path, str_member: str) -> str:
+	"""Return the ``CreDtAndTm`` a snapshot declares in its header, without extracting it.
+
+	The stamp is ISO-8601 (``2026-07-29T18:39:48``), so it sorts correctly as text — no parsing
+	needed to order two snapshots of the same session. Only the header is decompressed: a
+	snapshot's body runs to hundreds of megabytes, and dating it must not cost a read of it.
+
+	Parameters
+	----------
+	path_zip : pathlib.Path
+		The archive holding the snapshots.
+	str_member : str
+		The BVBG.028.02 XML member to date.
+
+	Returns
+	-------
+	str
+		The declared generation timestamp.
+
+	Raises
+	------
+	ValueError
+		If the header does not declare one — without it there is no way to tell which snapshot
+		is current, and picking the wrong one silently drops instruments.
+	"""
+	match_stamp = _RE_SNAPSHOT_STAMP.search(peek_member(path_zip, str_member, _HEADER_PROBE_BYTES))
+	if match_stamp is None:
+		raise ValueError(
+			f"no <CreDtAndTm> in the first {_HEADER_PROBE_BYTES} bytes of {str_member}"
+		)
+	return match_stamp.group(1).decode()
 
 
 class _BaseInstrumentsFileReader(IngestionReader):
@@ -256,7 +302,14 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		return (*list_common, *self.list_date_cols)
 
 	def _locate_xml(self, path_download: Path, path_dir: Path) -> Path:
-		"""Extract the ZIP and return its single XML member.
+		"""Extract the ZIP and return the XML member of the session's **latest** snapshot.
+
+		The download is a ZIP **inside** a ZIP, and the inner archive carries one XML per
+		intraday snapshot the exchange published for the session — a pre-open one and a
+		post-close one on every file checked. The snapshots are cumulative: on ``IN260729``
+		the later one held all 183,164 instruments of the earlier plus 10 more, and removed
+		none. So the session's definitive picture is the snapshot with the greatest
+		``CreDtAndTm``, and reading any other silently drops the day's late registrations.
 
 		Parameters
 		----------
@@ -268,25 +321,40 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		Returns
 		-------
 		pathlib.Path
-			The extracted XML file.
+			The extracted XML file of the latest snapshot — the **only** member written to disk.
 
 		Raises
 		------
 		ValueError
-			If the archive does not contain exactly one ``.xml`` member (fail loudly rather
-			than guess which member to parse).
+			If the archive holds no ``.xml`` member at all, or if a snapshot does not declare
+			its ``CreDtAndTm`` (fail loudly rather than guess which snapshot is current).
+
+		Notes
+		-----
+		The snapshots are dated from their headers *inside* the archive, so only the winner is
+		ever extracted: writing every snapshot out would cost hundreds of megabytes of disk per
+		read to then parse one of them.
 		"""
-		list_xml = [
-			path_member
-			for path_member in extract_all(path_download, path_dir)
-			if path_member.suffix.lower() == ".xml"
-		]
-		if len(list_xml) != 1:
-			raise ValueError(
-				f"expected exactly one .xml member in {path_download.name}, "
-				f"found {[p.name for p in list_xml]}"
-			)
-		return list_xml[0]
+		path_archive = path_download
+		set_seen: set[str] = set()
+		while True:
+			list_names = list_member_names(path_archive)
+			list_xml = [str_name for str_name in list_names if str_name.lower().endswith(".xml")]
+			if list_xml:
+				dict_stamps = {
+					str_name: _snapshot_stamp(path_archive, str_name) for str_name in list_xml
+				}
+				str_latest = max(dict_stamps, key=dict_stamps.__getitem__)
+				return extract_members(path_archive, path_dir, [str_latest])[0]
+			list_zip = [
+				str_name
+				for str_name in list_names
+				if str_name.lower().endswith(".zip") and str_name not in set_seen
+			]
+			if not list_zip:
+				raise ValueError(f"no .xml member in {path_download.name}")
+			set_seen.add(list_zip[0])
+			path_archive = extract_members(path_archive, path_dir, [list_zip[0]])[0]
 
 	def read(self) -> pd.DataFrame:
 		"""Fetch, flatten, and provenance-stamp this reader's projection of the file.
@@ -301,7 +369,8 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		ContractError
 			When the flattened frame violates :attr:`cls_contract`.
 		ValueError
-			When the archive does not hold exactly one XML member.
+			When the archive holds no XML member, or when a snapshot inside it does not declare
+			its ``CreDtAndTm``.
 
 		Notes
 		-----
