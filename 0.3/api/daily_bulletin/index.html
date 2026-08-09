@@ -1462,6 +1462,21 @@
 <p>A seção <code>filings_b3.daily_bulletin</code> lê os conjuntos de dados do <strong>Boletim Diário do Pregão</strong> da B3,
 servidos a partir de <code>arquivos.b3.com.br/bdi</code>. Cada conjunto é uma tabela JSON paginada; um <em>reader</em>
 transforma um pregão em um <code>pandas.DataFrame</code> tipado, validado por contrato e com proveniência.</p>
+<p>O serviço é uma <strong>API de POST</strong>: a consulta inteira viaja no caminho da URL e o corpo é um objeto
+JSON vazio (<code>{}</code>). Um <code>GET</code> na mesma URL devolve <strong>405 Method Not Allowed</strong> — com ou sem <em>cookies</em>
+e cabeçalhos de navegador, então é o método, não bloqueio de robô. Os <em>readers</em> desta seção já
+fazem isso; quem chama não precisa saber.</p>
+<p>Duas irregularidades do formato que os <em>readers</em> absorvem:</p>
+<ul>
+<li><strong>Linhas mais largas que o cabeçalho.</strong> A <code>DailyAverageStocks</code> declara 4 colunas e envia 5
+  posições por linha, a quinta sempre nula, enquanto a <code>EconomicIndicators</code> bate exato. Como o
+  payload é posicional, o excedente não tem nome: ele é descartado <strong>apenas</strong> quando está vazio.
+  Um valor de verdade sem coluna correspondente faz o <em>reader</em> falhar alto, porque descartá-lo em
+  silêncio é exatamente como uma coluna da fonte deixa de chegar sem nada ficar vermelho.</li>
+<li><strong>Janela de disponibilidade.</strong> A resposta declara um <code>limitDate</code> por tabela (<code>"D-21"</code> na
+  <code>EconomicIndicators</code>, por exemplo): o serviço só devolve os últimos dias. Um pedido fora da
+  janela não é erro de código.</li>
+</ul>
 <blockquote>
 <p><strong>Veja também:</strong> <a href="../">Visão geral da API</a> · <a href="../../usage/">Uso</a> · <a href="../../examples/">Exemplos</a></p>
 </blockquote>
