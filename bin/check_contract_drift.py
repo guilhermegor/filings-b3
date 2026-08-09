@@ -54,6 +54,11 @@ _DRIFT_RETRY_POLICY: RetryPolicy = RetryPolicy(int_max_attempts=1)
 # the runner's own ceiling kills it — a red run for a reporting step that is meant to be optional.
 _API_TIMEOUT_S: int = 30
 
+# Issue-search pagination. The ceiling exists so a pathological repository cannot turn the lookup
+# into an unbounded crawl; 20 pages of 100 is far beyond any plausible label population.
+_ISSUE_PAGE_SIZE: int = 100
+_MAX_ISSUE_PAGES: int = 20
+
 
 # ---------------------------------------------------------------------------------------------
 # Pure oracle (no network) — unit-tested exhaustively.
@@ -266,6 +271,45 @@ def find_drift_issue(list_issues: list[dict]) -> dict | None:
 	return None
 
 
+def search_tracker(str_api: str) -> dict | None:
+	"""Walk every page of the labelled issues looking for this job's tracker.
+
+	Parameters
+	----------
+	str_api : str
+		The ``.../repos/{owner}/{name}`` API base.
+
+	Returns
+	-------
+	dict or None
+		The tracking issue, in any state and on any page, or ``None`` when it does not exist.
+
+	Notes
+	-----
+	Pagination is **not** a nicety here. A single ``per_page=100`` request only ever sees the first
+	page, so once the label carries more than 100 issues the tracker becomes invisible and every
+	run opens a duplicate — the same weekly-duplicate failure as searching ``state=open`` only,
+	reached by a different route. ``state=all`` makes it likelier still, since closed issues count
+	toward the page budget.
+	"""
+	int_page = 1
+	while int_page <= _MAX_ISSUE_PAGES:
+		list_page = _api(
+			"GET",
+			f"{str_api}/issues?state=all&labels={_ISSUE_LABEL}"
+			f"&per_page={_ISSUE_PAGE_SIZE}&page={int_page}",
+		)
+		if not list_page:
+			return None
+		dict_found = find_drift_issue(list_page)
+		if dict_found is not None:
+			return dict_found
+		if len(list_page) < _ISSUE_PAGE_SIZE:
+			return None
+		int_page += 1
+	return None
+
+
 def upsert_issue(str_api: str, list_problems: list[str]) -> None:
 	"""Open the tracking issue, or update it in place if it already exists.
 
@@ -277,9 +321,7 @@ def upsert_issue(str_api: str, list_problems: list[str]) -> None:
 		The drift messages to report.
 	"""
 	str_body = build_issue_body(list_problems)
-	# Querying every state, because a closed tracker must be reopened rather than duplicated.
-	list_all = _api("GET", f"{str_api}/issues?state=all&labels={_ISSUE_LABEL}&per_page=100")
-	dict_existing = find_drift_issue(list_all)
+	dict_existing = search_tracker(str_api)
 	if dict_existing is not None:
 		int_number = dict_existing["number"]
 		_api("PATCH", f"{str_api}/issues/{int_number}", {"body": str_body, "state": "open"})

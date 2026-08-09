@@ -370,6 +370,13 @@ def _api(str_method: str, str_url: str, dict_payload=None):
     except urllib.error.HTTPError as cls_err:
         print(f"::warning::{str_method} {str_url} -> HTTP {cls_err.code}")
         return None
+    except OSError as cls_err:
+        # A refused connection, a DNS failure or the timeout above raises URLError/TimeoutError,
+        # both OSError subclasses — none of them an HTTPError. Without this branch the gate
+        # crashes on a transport hiccup instead of degrading, which is what the docstring above
+        # promises and what keeps a required check from turning red on GitHub's bad minute.
+        print(f"::warning::{str_method} {str_url} -> {type(cls_err).__name__}: {cls_err}")
+        return None
 
 
 def _graphql(str_query: str, dict_vars: dict):

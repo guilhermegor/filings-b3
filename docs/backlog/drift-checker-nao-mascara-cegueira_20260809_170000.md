@@ -51,13 +51,36 @@ que renomear `find_open_drift_issue` → `find_drift_issue` não quebrou teste n
 
 Rodei os 5 testes novos **contra o código antigo**:
 
-```
+```text
 5 failed, 7 passed     <- codigo antigo
 12 passed              <- codigo corrigido
 ```
 
 Cada teste novo falha pelo seu próprio defeito, e os 7 antigos passam nos dois lados. Sem isso,
 um teste novo verde não distingue "o conserto funciona" de "o teste não olha".
+
+## Segunda rodada de revisão — mais três
+
+### 5. A busca da issue de rastreio via só a primeira página
+
+`per_page=100` sem `page=N` enxerga **só a página um**. Assim que o label passar de 100 issues, o
+_tracker_ some da vista e cada _run_ abre uma duplicata — a mesma falha do `state=open`, por outra
+rota. E o `state=all` piora, porque issues fechadas contam para o orçamento da página.
+
+Conserto: `search_tracker()` percorre as páginas até achar o marcador, até uma página curta, ou até
+um teto de 20 páginas.
+
+**O `check_bdi_catalog.py` tinha o mesmo defeito** — mergeado ontem, mesma correção aplicada aqui.
+Deixá-lo quebrado para abrir issue separada seria burocracia sobre um _diff_ de dez linhas no
+arquivo irmão.
+
+### 6. `pr_gate._api` só capturava `HTTPError`
+
+Conexão recusada, falha de DNS ou o `timeout` levantam `URLError`/`TimeoutError` — subclasses de
+`OSError`, nenhuma delas `HTTPError`. Sem o ramo, o _gate_ **quebra** num soluço de transporte em
+vez de degradar, que é o que o próprio docstring promete.
+
+### 7. Cerca de código sem linguagem neste ledger (MD040)
 
 ## O que foi feito
 
@@ -67,7 +90,10 @@ um teste novo verde não distingue "o conserto funciona" de "o teste não olha".
       depois).
 - [x] 5 testes novos + docstring do módulo corrigido, que afirmava uma cobertura que não existia.
 - [x] Controle negativo executado, acima.
-- [x] 409 testes de unidade verdes.
+- [x] `search_tracker()` paginado nos **dois** checkers + 2 testes, com controle negativo próprio
+      (sem paginação: `opened a new drift issue`, a duplicata prevista).
+- [x] `pr_gate._api` captura `OSError` além de `HTTPError`.
+- [x] 411 testes de unidade verdes.
 
 ## Aberto
 

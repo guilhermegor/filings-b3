@@ -200,3 +200,48 @@ def test_a_missing_token_reports_to_stdout_instead_of_crashing(
 
 	assert drift.main() == 0
 	assert "reporting to stdout only" in capsys.readouterr().err
+
+
+def test_a_tracker_on_a_later_page_is_found_instead_of_duplicated(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	"""The lookup walks pages, so a tracker past the first 100 issues is updated, not duplicated.
+
+	A single ``per_page=100`` request only ever sees page one. Once the label carries more issues
+	than that, the tracker becomes invisible and every weekly run opens a new one — the same
+	duplicate failure as searching ``state=open`` only, reached by a different route.
+	"""
+	list_page_one = [{"number": i, "state": "open", "body": "outra"} for i in range(100)]
+	list_page_two = [{"number": 999, "state": "closed", "body": f"{drift._ISSUE_MARKER}\nold"}]
+	list_calls: list[tuple[str, str]] = []
+
+	def _fake_api(str_method: str, str_url: str, dict_body: dict | None = None) -> object:  # noqa: ARG001
+		list_calls.append((str_method, str_url))
+		if str_method != "GET":
+			return None
+		return list_page_two if "page=2" in str_url else list_page_one
+
+	monkeypatch.setattr(drift, "_api", _fake_api)
+
+	drift.upsert_issue("https://api.github.com/repos/o/r", ["derivou"])
+
+	assert [m for m, _ in list_calls] == ["GET", "GET", "PATCH"], "must PATCH, never POST"
+	assert list_calls[-1][1].endswith("/issues/999")
+
+
+def test_the_page_walk_stops_on_a_short_page(monkeypatch: pytest.MonkeyPatch) -> None:
+	"""A page shorter than the page size is the last one — no further request is made.
+
+	Without this the walk would keep asking for pages until the ceiling, spending 20 API calls to
+	learn what the short page already said.
+	"""
+	list_calls: list[str] = []
+
+	def _fake_api(str_method: str, str_url: str, dict_body: dict | None = None) -> object:  # noqa: ARG001
+		list_calls.append(str_url)
+		return [{"number": 1, "state": "open", "body": "sem marcador"}]
+
+	monkeypatch.setattr(drift, "_api", _fake_api)
+
+	assert drift.search_tracker("https://api.github.com/repos/o/r") is None
+	assert len(list_calls) == 1
