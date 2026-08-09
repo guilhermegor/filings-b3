@@ -712,6 +712,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#download-incompleto-nao-passa-por-pregao-pequeno" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download incompleto não passa por pregão pequeno
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#memoria" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1475,6 +1486,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#download-incompleto-nao-passa-por-pregao-pequeno" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download incompleto não passa por pregão pequeno
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#memoria" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1632,6 +1654,15 @@ recente trazia os 183.164 instrumentos do primeiro <strong>mais 10</strong>, sem
 <code>BizFileHdr</code> de cada XML declara quando ele foi gerado. Ler qualquer outro descartaria em
 silêncio os registros tardios do pregão. Um <em>snapshot</em> sem <code>CreDtAndTm</code> faz o <em>reader</em> falhar
 alto, em vez de adivinhar qual é o vigente.</p>
+<h4 id="download-incompleto-nao-passa-por-pregao-pequeno">Download incompleto não passa por pregão pequeno<a class="headerlink" href="#download-incompleto-nao-passa-por-pregao-pequeno" title="Permanent link">&para;</a></h4>
+<p>O mesmo cabeçalho declara <strong>quantos registros</strong> o <em>snapshot</em> carrega (<code>TtlNbOfMsg</code> — em
+ISO-20022 cada <code>&lt;Instrm&gt;</code> é uma <em>message</em>). Todo <em>reader</em> da família confere esse número contra
+os registros efetivamente lidos e <strong>falha alto</strong> quando eles divergem.</p>
+<p>A conferência existe porque um download interrompido é invisível por construção: o XML é
+bem-formado até onde chegou, cada linha que chegou é válida, o contrato e a tipagem passam — e o
+<em>frame</em> volta menor, indistinguível de uma sessão com menos instrumentos. A contagem é feita
+<strong>antes</strong> do filtro de sub-bloco, então vale igual para o <em>reader</em> consolidado e para os
+dezessete por tipo, cujas linhas são um recorte do arquivo.</p>
 <p>Todo <em>reader</em> tem a mesma forma pública:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Reader</span><span class="p">(</span><span class="n">date_ref</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span> <span class="n">path_raw</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reader</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">Reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>
