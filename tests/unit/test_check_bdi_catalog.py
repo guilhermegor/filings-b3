@@ -21,10 +21,11 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "bin"))
 
 from bdi_catalog import BDI_TABLES, STATE_IMPLEMENTED, STATE_ISSUE  # noqa: E402
+import check_bdi_catalog  # noqa: E402
 from check_bdi_catalog import (  # noqa: E402
 	build_issue_body,
 	catalog_divergence,
-	find_open_catalog_issue,
+	find_catalog_issue,
 	published_tables,
 )
 
@@ -99,12 +100,62 @@ def test_the_catalog_issue_is_told_apart_from_the_drift_issue() -> None:
 	make each one hijack and overwrite the other's tracking issue.
 	"""
 	list_issues = [
-		{"number": 1, "body": "<!-- contract-drift-bot -->\nlayout"},
-		{"number": 2, "body": "<!-- bdi-catalog-bot -->\ncatalog"},
+		{"number": 1, "state": "open", "body": "<!-- contract-drift-bot -->\nlayout"},
+		{"number": 2, "state": "open", "body": "<!-- bdi-catalog-bot -->\ncatalog"},
 	]
 
-	assert find_open_catalog_issue(list_issues) == 2
-	assert find_open_catalog_issue([list_issues[0]]) is None
+	assert find_catalog_issue(list_issues)["number"] == 2
+	assert find_catalog_issue([list_issues[0]]) is None
+
+
+def test_a_closed_tracker_is_found_so_it_can_be_reopened() -> None:
+	"""A closed marked issue is still THE tracker — otherwise each run opens a weekly duplicate.
+
+	Searching open issues only would mean that the moment a maintainer closes the tracker while the
+	divergence persists, the job silently stops updating one issue and starts creating new ones.
+	"""
+	dict_found = find_catalog_issue(
+		[{"number": 7, "state": "closed", "body": "<!-- bdi-catalog-bot -->\nold"}]
+	)
+
+	assert dict_found is not None
+	assert dict_found["number"] == 7
+
+
+def test_an_unreadable_index_is_a_skip_not_an_agreement(
+	monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+	"""A B3 outage reports SKIPPED, never "catalog agrees".
+
+	`None` and `[]` say different things — "I never compared" and "I compared and found nothing" —
+	and collapsing them would print a green line asserting a comparison that never happened. That
+	is the very failure mode this check exists to catch, so the check must not commit it itself.
+	"""
+	monkeypatch.setattr(check_bdi_catalog, "collect_divergence", lambda: None)
+
+	assert check_bdi_catalog.main() == 0
+	assert "SKIPPED" in capsys.readouterr().out
+
+
+def test_a_github_failure_does_not_redden_the_job(
+	monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+	"""A divergence still exits 0 when GitHub cannot be reached — it is already on stdout.
+
+	The job's whole contract is to report by opening an issue rather than by failing, so a hiccup
+	talking to GitHub must not turn a scheduled run red.
+	"""
+
+	def _boom(str_api: str, list_problems: list[str]) -> None:  # noqa: ARG001
+		raise OSError("GitHub is down")
+
+	monkeypatch.setattr(check_bdi_catalog, "collect_divergence", lambda: ["divergiu"])
+	monkeypatch.setattr(check_bdi_catalog, "upsert_issue", _boom)
+	monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+	monkeypatch.setenv("GITHUB_TOKEN", "x")
+
+	assert check_bdi_catalog.main() == 0
+	assert "could not report to GitHub" in capsys.readouterr().err
 
 
 def test_every_catalogued_table_declares_a_destination() -> None:

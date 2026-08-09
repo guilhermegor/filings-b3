@@ -118,17 +118,23 @@ def published_tables(list_classifications: list[dict]) -> frozenset[str]:
 # ---------------------------------------------------------------------------------------------
 
 
-def collect_divergence() -> list[str]:
+def collect_divergence() -> list[str] | None:
 	"""Fetch B3's index and diff it against the catalog.
 
 	Returns
 	-------
-	list of str
-		The divergence messages, or an empty list when the catalog agrees with B3 **or** when B3
-		could not be reached (an outage is a skipped week, never a reported divergence).
+	list of str or None
+		The divergence messages (empty when the catalog agrees with B3), or ``None`` when B3 could
+		not be read at all.
 
 	Notes
 	-----
+	``None`` and ``[]`` are **deliberately different**: "I compared and found nothing" and "I never
+	compared" are not the same claim, and collapsing them would let an outage print *catalog agrees
+	with B3 (69 tables)* — a green line asserting a comparison that never happened. That is the
+	exact failure mode this whole check exists to prevent, so it must not be reintroduced by the
+	check's own error handling.
+
 	The index route is a **GET**, unlike the data route it sits beside, which answers 405 to a GET
 	and requires a POST.
 	"""
@@ -140,7 +146,7 @@ def collect_divergence() -> list[str]:
 		frozenset_published = published_tables(list_payload)
 	except (OSError, ValueError) as cls_err:
 		print(f"skipping: could not read B3's table index ({cls_err})", file=sys.stderr)
-		return []
+		return None
 	return catalog_divergence(frozenset_published, frozenset(BDI_TABLES))
 
 
@@ -194,31 +200,37 @@ def _api(str_method: str, str_url: str, dict_body: dict | None = None) -> Any:  
 	cls_request.add_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
 	cls_request.add_header("Accept", "application/vnd.github+json")
 	cls_request.add_header("Content-Type", "application/json")
-	with urllib.request.urlopen(cls_request) as cls_response:  # noqa: S310
+	with urllib.request.urlopen(cls_request, timeout=_TIMEOUT_S) as cls_response:  # noqa: S310
 		return json.loads(cls_response.read() or "null")
 
 
-def find_open_catalog_issue(list_issues: list[dict]) -> int | None:
-	"""Return the number of the existing open catalog issue, if any.
+def find_catalog_issue(list_issues: list[dict]) -> dict | None:
+	"""Return the existing catalog issue, open **or closed**, if any.
 
 	Parameters
 	----------
 	list_issues : list of dict
-		Open issues carrying the label, each ``{"number": int, "body": str, ...}``.
+		Issues carrying the label, each ``{"number": int, "state": str, "body": str, ...}``.
 
 	Returns
 	-------
-	int or None
+	dict or None
 		The first issue whose body carries this job's marker, or ``None``.
 
 	Notes
 	-----
+	Two things this must get right:
+
 	The label is shared with the contract-drift job, so the **marker** is what separates the two
 	trackers — matching on the label alone would make each job hijack the other's issue.
+
+	**Closed issues count.** Searching open issues only would mean that once a maintainer closes
+	the tracker while the divergence persists, every subsequent run opens a *brand new* issue — a
+	weekly duplicate instead of the single tracker this job promises.
 	"""
 	for dict_issue in list_issues:
 		if _ISSUE_MARKER in (dict_issue.get("body") or ""):
-			return dict_issue["number"]
+			return dict_issue
 	return None
 
 
@@ -233,11 +245,13 @@ def upsert_issue(str_api: str, list_problems: list[str]) -> None:
 		The divergence messages to report.
 	"""
 	str_body = build_issue_body(list_problems)
-	list_open = _api("GET", f"{str_api}/issues?state=open&labels={_ISSUE_LABEL}&per_page=100")
-	int_existing = find_open_catalog_issue(list_open)
-	if int_existing is not None:
-		_api("PATCH", f"{str_api}/issues/{int_existing}", {"body": str_body})
-		print(f"updated catalog issue #{int_existing}", file=sys.stderr)
+	# Querying every state, because a closed tracker must be reopened rather than duplicated.
+	list_all = _api("GET", f"{str_api}/issues?state=all&labels={_ISSUE_LABEL}&per_page=100")
+	dict_existing = find_catalog_issue(list_all)
+	if dict_existing is not None:
+		dict_patch: dict[str, str] = {"body": str_body, "state": "open"}
+		_api("PATCH", f"{str_api}/issues/{dict_existing['number']}", dict_patch)
+		print(f"updated catalog issue #{dict_existing['number']}", file=sys.stderr)
 		return
 	_api(
 		"POST",
@@ -256,6 +270,9 @@ def main() -> int:
 		Always ``0`` — a divergence is reported as an issue, never as a failed check.
 	"""
 	list_problems = collect_divergence()
+	if list_problems is None:
+		print("check SKIPPED — B3's index was unreadable; nothing was compared")
+		return 0
 	if not list_problems:
 		print(f"catalog agrees with B3 ({len(BDI_TABLES)} tables)")
 		return 0
@@ -268,7 +285,15 @@ def main() -> int:
 	if not str_repo or not os.environ.get("GITHUB_TOKEN"):
 		print("no GITHUB_REPOSITORY/GITHUB_TOKEN — reporting to stdout only", file=sys.stderr)
 		return 0
-	upsert_issue(f"{_GH_API}/repos/{str_repo}", list_problems)
+	try:
+		upsert_issue(f"{_GH_API}/repos/{str_repo}", list_problems)
+	except (OSError, ValueError) as cls_err:
+		# The divergence is already on stdout above, so a GitHub hiccup must not redden a job whose
+		# whole contract is to report by opening an issue rather than by failing.
+		print(
+			f"could not report to GitHub ({cls_err}) — see the divergence above",
+			file=sys.stderr,
+		)
 	return 0
 
 
