@@ -125,7 +125,13 @@ def url_filename(str_url: str) -> str:
 	tuple_exceptions=(OSError,),
 )
 @type_checker
-def download_file(str_url: str, path_dest: Path, int_timeout_s: int = _TIMEOUT_SECONDS) -> Path:
+def download_file(
+	str_url: str,
+	path_dest: Path,
+	int_timeout_s: int = _TIMEOUT_SECONDS,
+	bytes_payload: bytes | None = None,
+	str_content_type: str | None = None,
+) -> Path:
 	"""Download ``str_url`` to ``path_dest`` and return the written path.
 
 	Validates the URL (scheme + non-internal host), fetches it **without following
@@ -141,6 +147,15 @@ def download_file(str_url: str, path_dest: Path, int_timeout_s: int = _TIMEOUT_S
 		Destination file path; its parent is created if missing.
 	int_timeout_s : int, optional
 		Socket timeout in seconds, by default :data:`_TIMEOUT_SECONDS`.
+	bytes_payload : bytes, optional
+		A request body. ``None`` (default) issues a ``GET``; anything else issues a ``POST``
+		carrying these bytes. Some published datasets are served by an endpoint that answers
+		**405 to a GET** and only responds to a POST — B3's Boletim Diário tables want a
+		``POST`` with ``{}``, an empty JSON object, since the query itself travels in the path.
+	str_content_type : str, optional
+		``Content-Type`` for the payload (e.g. ``"application/json"``). The seam does not infer
+		it: what the bytes *mean* is the caller's knowledge, and guessing here would make one
+		encoding the silent default for every future endpoint.
 
 	Returns
 	-------
@@ -164,7 +179,13 @@ def download_file(str_url: str, path_dest: Path, int_timeout_s: int = _TIMEOUT_S
 	path_dest.parent.mkdir(parents=True, exist_ok=True)
 	# Scheme is validated and redirects are blocked by _OPENER, so the S310 arbitrary-scheme
 	# / auto-redirect concerns do not apply here.
-	cls_request = request.Request(str_url, method="GET")  # noqa: S310
+	dict_headers = {} if str_content_type is None else {"Content-Type": str_content_type}
+	cls_request = request.Request(  # noqa: S310
+		str_url,
+		data=bytes_payload,
+		headers=dict_headers,
+		method="GET" if bytes_payload is None else "POST",
+	)
 	try:
 		with _OPENER.open(cls_request, timeout=int_timeout_s) as cls_response:  # noqa: S310
 			int_status = cls_response.status

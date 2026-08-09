@@ -86,13 +86,48 @@ def _patch_pages(monkeypatch: pytest.MonkeyPatch) -> None:
 		2: _page([["ITUB4", 3.5], ["BBAS3", 4.5]]),
 	}
 
-	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+	def _fake_download(
+		str_url: str,
+		path_dest: Path,
+		int_timeout_s: int = 30,
+		bytes_payload: bytes | None = None,
+		str_content_type: str | None = None,
+	) -> Path:
 		int_page = int(str_url.rstrip("/").split("/")[-2])
 		path_dest.parent.mkdir(parents=True, exist_ok=True)
 		path_dest.write_bytes(dict_pages.get(int_page, _page([])))
 		return path_dest
 
 	monkeypatch.setattr("filings_b3._internal.utils.http_downloader.download_file", _fake_download)
+
+
+def test_read_requests_each_page_as_a_json_post(monkeypatch: pytest.MonkeyPatch) -> None:
+	"""Every page is fetched with POST and an empty JSON body — the bulletin rejects GET.
+
+	Measured against the live service: a GET returns **405 Method Not Allowed**, with or without
+	browser headers and cookies, so the whole section downloads nothing. Pins the *wiring*: the
+	seam only sends a body when a caller passes one, and this reader is the caller that knows
+	the bulletin is a POST API whose query travels in the URL path.
+	"""
+	list_calls: list[tuple[bytes | None, str | None]] = []
+
+	def _fake_download(
+		str_url: str,  # noqa: ARG001
+		path_dest: Path,
+		int_timeout_s: int = 30,  # noqa: ARG001
+		bytes_payload: bytes | None = None,
+		str_content_type: str | None = None,
+	) -> Path:
+		list_calls.append((bytes_payload, str_content_type))
+		path_dest.parent.mkdir(parents=True, exist_ok=True)
+		path_dest.write_bytes(_page([["PETR4", 1.5]]))
+		return path_dest
+
+	monkeypatch.setattr("filings_b3._internal.utils.http_downloader.download_file", _fake_download)
+
+	_DefaultPagingReader(_DATE).read()
+
+	assert list_calls == [(b"{}", "application/json")]
 
 
 def test_read_paginates_until_an_empty_page(_patch_pages: None) -> None:
@@ -128,7 +163,13 @@ def test_an_echoing_endpoint_is_not_multiplied(monkeypatch: pytest.MonkeyPatch) 
 		Fixture used to replace the download seam.
 	"""
 
-	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+	def _fake_download(
+		str_url: str,
+		path_dest: Path,
+		int_timeout_s: int = 30,
+		bytes_payload: bytes | None = None,
+		str_content_type: str | None = None,
+	) -> Path:
 		path_dest.parent.mkdir(parents=True, exist_ok=True)
 		path_dest.write_bytes(_page([["PETR4", 1.5], ["VALE3", 2.5]]))  # same, every page
 		return path_dest
@@ -219,7 +260,13 @@ def test_content_hash_covers_every_page_not_just_the_first(
 	"""
 
 	def _make_download(list_page_two_rows: list[list[object]]) -> object:
-		def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+		def _fake_download(
+			str_url: str,
+			path_dest: Path,
+			int_timeout_s: int = 30,
+			bytes_payload: bytes | None = None,
+			str_content_type: str | None = None,
+		) -> Path:
 			int_page = int(str_url.rstrip("/").split("/")[-2])
 			dict_pages = {
 				1: _page([["PETR4", 1.5]]),  # identical across both reads
@@ -266,7 +313,13 @@ def test_read_raises_contract_error_when_a_required_column_is_missing(
 		Fixture used to replace the download seam.
 	"""
 
-	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+	def _fake_download(
+		str_url: str,
+		path_dest: Path,
+		int_timeout_s: int = 30,
+		bytes_payload: bytes | None = None,
+		str_content_type: str | None = None,
+	) -> Path:
 		int_page = int(str_url.rstrip("/").split("/")[-2])
 		path_dest.parent.mkdir(parents=True, exist_ok=True)
 		dict_payload = {
@@ -299,3 +352,66 @@ def test_build_url_carries_endpoint_date_page_and_size() -> None:
 	str_url = _SampleBdiReader(date(2025, 1, 2)).build_url(3)
 
 	assert str_url == f"{BDI_TABLE_BASE}/DailyAverageStocks/2025-01-02/2025-01-02/3/1000"
+
+
+def _page_wide(list_rows: list[list[object]], int_extra: int) -> bytes:
+	"""Serialize a page whose rows carry ``int_extra`` positions past the named columns."""
+	dict_page = {
+		"table": {
+			"columns": [{"name": "TckrSymb"}, {"name": "VlmTradedDay"}],
+			"values": [[*list_row, *([None] * int_extra)] for list_row in list_rows],
+		}
+	}
+	return json.dumps(dict_page).encode("utf-8")
+
+
+def _patch_bytes(monkeypatch: pytest.MonkeyPatch, bytes_page: bytes) -> None:
+	"""Serve one fixed page for page 1 and an empty page afterwards."""
+
+	def _fake_download(
+		str_url: str,
+		path_dest: Path,
+		int_timeout_s: int = 30,  # noqa: ARG001
+		bytes_payload: bytes | None = None,  # noqa: ARG001
+		str_content_type: str | None = None,  # noqa: ARG001
+	) -> Path:
+		int_page = int(str_url.rstrip("/").split("/")[-2])
+		path_dest.parent.mkdir(parents=True, exist_ok=True)
+		path_dest.write_bytes(bytes_page if int_page == 1 else _page([]))
+		return path_dest
+
+	monkeypatch.setattr("filings_b3._internal.utils.http_downloader.download_file", _fake_download)
+
+
+def test_rows_wider_than_the_header_drop_their_empty_tail(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	"""A table shipping more positions than it names still reads, when the surplus is empty.
+
+	`DailyAverageStocks` declares four columns and sends five positions per row, the fifth
+	always null, while `EconomicIndicators` matches exactly — so this is per-table, not a
+	property of the payload format, and a reader cannot assume either shape.
+	"""
+	_patch_bytes(monkeypatch, _page_wide([["PETR4", 1.5], ["VALE3", 2.5]], 1))
+
+	df_out = _DefaultPagingReader(_DATE).read()
+
+	assert df_out["TCKR_SYMB"].tolist() == ["PETR4", "VALE3"]
+
+
+def test_a_value_with_no_column_name_fails_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
+	"""A populated position past the header is an error, never a silent trim.
+
+	The payload is positional, so a surplus value cannot be named — and dropping it quietly is
+	exactly how a source column stops arriving without anything going red.
+	"""
+	dict_page = {
+		"table": {
+			"columns": [{"name": "TckrSymb"}, {"name": "VlmTradedDay"}],
+			"values": [["PETR4", 1.5, "orphan"]],
+		}
+	}
+	_patch_bytes(monkeypatch, json.dumps(dict_page).encode("utf-8"))
+
+	with pytest.raises(ValueError, match="unnamed tail is not empty"):
+		_DefaultPagingReader(_DATE).read()
