@@ -77,6 +77,9 @@ AUTO_MERGEABLE = frozenset({"docs", "ci", "deps"})
 SIZE_BUCKETS = (("XS", 10), ("S", 50), ("M", 200), ("L", 500))
 SIZE_XL = "XL"
 
+# Socket timeout for every GitHub call below.
+_API_TIMEOUT_S = 30
+
 
 def classify_path(str_path: str) -> str:
     """Return the risk class of ONE path (``other`` when nothing matches).
@@ -359,10 +362,20 @@ def _api(str_method: str, str_url: str, dict_payload=None):
     if bytes_body:
         cls_req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(cls_req) as cls_resp:  # noqa: S310
+        # A timeout is what keeps "degrades rather than failing" true: without one a hung
+        # connection pins the gate until the runner's own ceiling kills it, turning an optional
+        # API call into a red required check.
+        with urllib.request.urlopen(cls_req, timeout=_API_TIMEOUT_S) as cls_resp:  # noqa: S310
             return json.loads(cls_resp.read() or "null")
     except urllib.error.HTTPError as cls_err:
         print(f"::warning::{str_method} {str_url} -> HTTP {cls_err.code}")
+        return None
+    except OSError as cls_err:
+        # A refused connection, a DNS failure or the timeout above raises URLError/TimeoutError,
+        # both OSError subclasses — none of them an HTTPError. Without this branch the gate
+        # crashes on a transport hiccup instead of degrading, which is what the docstring above
+        # promises and what keeps a required check from turning red on GitHub's bad minute.
+        print(f"::warning::{str_method} {str_url} -> {type(cls_err).__name__}: {cls_err}")
         return None
 
 

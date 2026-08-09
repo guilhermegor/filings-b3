@@ -50,6 +50,15 @@ _ISSUE_TITLE = "Deriva de layout detectada (UP2DATA x instruments reader)"
 # outage is an EXPECTED skip this week, not a transient worth retrying for ~24 s.
 _DRIFT_RETRY_POLICY: RetryPolicy = RetryPolicy(int_max_attempts=1)
 
+# Socket timeout for the GitHub calls. Without one, a hung connection pins the scheduled job until
+# the runner's own ceiling kills it — a red run for a reporting step that is meant to be optional.
+_API_TIMEOUT_S: int = 30
+
+# Issue-search pagination. The ceiling exists so a pathological repository cannot turn the lookup
+# into an unbounded crawl; 20 pages of 100 is far beyond any plausible label population.
+_ISSUE_PAGE_SIZE: int = 100
+_MAX_ISSUE_PAGES: int = 20
+
 
 # ---------------------------------------------------------------------------------------------
 # Pure oracle (no network) — unit-tested exhaustively.
@@ -151,7 +160,7 @@ def fetch_layout_columns(int_timeout_s: int = 60) -> frozenset[str] | None:  # n
 	return frozenset(df_layout["CANONICAL_COLUMN"].astype(str))
 
 
-def collect_drift(int_timeout_s: int = 60) -> list[str]:
+def collect_drift(int_timeout_s: int = 60) -> list[str] | None:
 	"""Run the oracle over the instruments layout and return every drift message found.
 
 	Parameters
@@ -161,14 +170,21 @@ def collect_drift(int_timeout_s: int = 60) -> list[str]:
 
 	Returns
 	-------
-	list of str
-		Every drift message (empty when the layout matches the reader, or the layout is
-		unavailable).
+	list of str or None
+		Every drift message (empty when the layout matches the reader), or ``None`` when B3's
+		layout asset could not be read at all.
+
+	Notes
+	-----
+	``None`` and ``[]`` are **deliberately different**: "I compared and found nothing" and "I never
+	compared" are not the same claim. Collapsing them let a B3 outage print *no layout drift
+	detected* — a green line asserting a comparison that never happened, which is precisely the
+	blindness this job exists to remove.
 	"""
 	frozenset_layout = fetch_layout_columns(int_timeout_s)
 	if frozenset_layout is None:
 		print("layout asset unavailable — skipping this run (not drift)", file=sys.stderr)
-		return []
+		return None
 	return layout_drift(INSTRUMENTS_FILE.str_name, mapped_columns(), frozenset_layout)
 
 
@@ -224,26 +240,73 @@ def _api(str_method: str, str_url: str, dict_body: dict | None = None) -> Any:  
 	cls_request.add_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
 	cls_request.add_header("Accept", "application/vnd.github+json")
 	cls_request.add_header("Content-Type", "application/json")
-	with urllib.request.urlopen(cls_request) as cls_response:  # noqa: S310
+	with urllib.request.urlopen(cls_request, timeout=_API_TIMEOUT_S) as cls_response:  # noqa: S310
 		return json.loads(cls_response.read() or "null")
 
 
-def find_open_drift_issue(list_issues: list[dict]) -> int | None:
-	"""Return the number of the existing open drift issue, if any.
+def find_drift_issue(list_issues: list[dict]) -> dict | None:
+	"""Return the existing drift issue, open **or closed**, if any.
 
 	Parameters
 	----------
 	list_issues : list of dict
-		Open issues carrying the drift label, each ``{"number": int, "body": str, ...}``.
+		Issues carrying the drift label, each ``{"number": int, "state": str, "body": str, ...}``.
 
 	Returns
 	-------
-	int or None
+	dict or None
 		The first issue whose body carries the marker, or ``None``.
+
+	Notes
+	-----
+	**Closed issues count.** Searching open issues only meant that the moment a maintainer closed
+	the tracker while the drift persisted, every later run opened a *brand new* issue — a weekly
+	duplicate, and the exact opposite of what this job's own issue body promises ("O job a reabre
+	se a deriva persistir"). The label is also shared with the BDI-catalog job, so the **marker**
+	is what keeps the two trackers apart.
 	"""
 	for dict_issue in list_issues:
 		if _ISSUE_MARKER in (dict_issue.get("body") or ""):
-			return dict_issue["number"]
+			return dict_issue
+	return None
+
+
+def search_tracker(str_api: str) -> dict | None:
+	"""Walk every page of the labelled issues looking for this job's tracker.
+
+	Parameters
+	----------
+	str_api : str
+		The ``.../repos/{owner}/{name}`` API base.
+
+	Returns
+	-------
+	dict or None
+		The tracking issue, in any state and on any page, or ``None`` when it does not exist.
+
+	Notes
+	-----
+	Pagination is **not** a nicety here. A single ``per_page=100`` request only ever sees the first
+	page, so once the label carries more than 100 issues the tracker becomes invisible and every
+	run opens a duplicate — the same weekly-duplicate failure as searching ``state=open`` only,
+	reached by a different route. ``state=all`` makes it likelier still, since closed issues count
+	toward the page budget.
+	"""
+	int_page = 1
+	while int_page <= _MAX_ISSUE_PAGES:
+		list_page = _api(
+			"GET",
+			f"{str_api}/issues?state=all&labels={_ISSUE_LABEL}"
+			f"&per_page={_ISSUE_PAGE_SIZE}&page={int_page}",
+		)
+		if not list_page:
+			return None
+		dict_found = find_drift_issue(list_page)
+		if dict_found is not None:
+			return dict_found
+		if len(list_page) < _ISSUE_PAGE_SIZE:
+			return None
+		int_page += 1
 	return None
 
 
@@ -258,11 +321,11 @@ def upsert_issue(str_api: str, list_problems: list[str]) -> None:
 		The drift messages to report.
 	"""
 	str_body = build_issue_body(list_problems)
-	list_open = _api("GET", f"{str_api}/issues?state=open&labels={_ISSUE_LABEL}&per_page=100")
-	int_existing = find_open_drift_issue(list_open)
-	if int_existing is not None:
-		_api("PATCH", f"{str_api}/issues/{int_existing}", {"body": str_body})
-		print(f"updated drift issue #{int_existing}", file=sys.stderr)
+	dict_existing = search_tracker(str_api)
+	if dict_existing is not None:
+		int_number = dict_existing["number"]
+		_api("PATCH", f"{str_api}/issues/{int_number}", {"body": str_body, "state": "open"})
+		print(f"updated drift issue #{int_number}", file=sys.stderr)
 		return
 	_api(
 		"POST",
@@ -281,6 +344,9 @@ def main() -> int:
 		Always ``0`` — drift is reported as an issue, never as a failed check.
 	"""
 	list_problems = collect_drift()
+	if list_problems is None:
+		print("check SKIPPED — B3's layout was unreadable; nothing was compared")
+		return 0
 	if not list_problems:
 		print("no layout drift detected")
 		return 0
@@ -290,8 +356,15 @@ def main() -> int:
 		print(f"  - {str_problem}")
 
 	str_repo = os.environ.get("GITHUB_REPOSITORY")
-	if str_repo:
+	if not str_repo or not os.environ.get("GITHUB_TOKEN"):
+		print("no GITHUB_REPOSITORY/GITHUB_TOKEN — reporting to stdout only", file=sys.stderr)
+		return 0
+	try:
 		upsert_issue(f"{_GH_API}/repos/{str_repo}", list_problems)
+	except (OSError, ValueError) as cls_err:
+		# The drift is already on stdout above, so a GitHub hiccup must not redden a job whose
+		# whole contract is to report by opening an issue rather than by failing.
+		print(f"could not report to GitHub ({cls_err}) — see the drift above", file=sys.stderr)
 	return 0
 
 
