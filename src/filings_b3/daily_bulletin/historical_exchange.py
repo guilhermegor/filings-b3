@@ -23,6 +23,8 @@ Usage::
 
 Keep the raw artifact for a datalake's bronze layer by passing ``path_raw``::
 
+    from pathlib import Path
+
     df = BdiHistoricalExchangeReader(date(2026, 8, 7), path_raw=Path("/data/bronze/b3")).read()
 """
 

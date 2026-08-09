@@ -57,7 +57,7 @@ df = BdiHistoricalExchangeReader(date(2026, 8, 7)).read()
 print(df[["RPT_DT", "ASST", "TCKR_SYMB", "PRIC_VAL"]])
 ```
 
-```
+```text
       RPT_DT ASST TCKR_SYMB PRIC_VAL
   2026-08-07  DOL   RTDOLD2   5.0819
   2026-08-07  DOL   RTDOLD1   5.0808
@@ -72,8 +72,11 @@ recente".
 A janela de cinco anos é o que distingue este _dataset_; basta iterar os pregões desejados:
 
 ```python
-import pandas as pd
 from datetime import date, timedelta
+
+import pandas as pd
+
+from filings_b3.daily_bulletin import BdiHistoricalExchangeReader
 
 date_start, date_end = date(2026, 8, 3), date(2026, 8, 7)
 list_frames = []
@@ -106,7 +109,10 @@ precificado a partir da taxa.
 ### Manter o artefato bruto (camada _bronze_)
 
 ```python
+from datetime import date
 from pathlib import Path
+
+from filings_b3.daily_bulletin import BdiHistoricalExchangeReader
 
 df = BdiHistoricalExchangeReader(
     date(2026, 8, 7), path_raw=Path("/data/bronze/b3")
