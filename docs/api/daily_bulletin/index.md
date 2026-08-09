@@ -32,6 +32,12 @@ Duas irregularidades do formato que os _readers_ absorvem:
   quantidade emprestada, o preço médio de empréstimo e o saldo financeiro. **Contrato de coluna
   completa** (as 10 colunas da fonte, em ordem), verificado contra uma resposta ao vivo e o glossário
   oficial da B3.
+- **[Histórico de taxas de câmbio (Res. BCB nº 120)](historical_exchange.md)** —
+  `BdiHistoricalExchangeReader`: as taxas de câmbio oficiais determinadas pelo Banco Central
+  (tabela `HistoricalExchange`), que a B3 usa para precificar contratos futuros e de opções
+  referenciados em moeda. **Histórico de cinco anos completos mais o ano corrente**, ao contrário
+  dos demais datasets da seção. O _reader_ desfaz uma troca de nomes da API, publicando o ativo em
+  `ASST` e o instrumento em `TCKR_SYMB` como manda o glossário.
 - **[Resumo diário do mercado à vista de ações](stocks_summary.md)** — `BdiStocksSummaryReader`: o
   resumo por pregão do mercado à vista (tabela `DailyAverageStocks`). Uma linha por instrumento com a
   quantidade de negócios e o volume financeiro negociado do dia.

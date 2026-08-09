@@ -16,7 +16,12 @@ filings_b3.daily_bulletin import BdiStocksSummaryReader``. The package root expo
 from filings_b3.daily_bulletin.btb_lending_open_positions import (
 	BdiBtbLendingOpenPositionsReader,
 )
+from filings_b3.daily_bulletin.historical_exchange import BdiHistoricalExchangeReader
 from filings_b3.daily_bulletin.stocks_summary import BdiStocksSummaryReader
 
 
-__all__ = ["BdiBtbLendingOpenPositionsReader", "BdiStocksSummaryReader"]
+__all__ = [
+	"BdiBtbLendingOpenPositionsReader",
+	"BdiHistoricalExchangeReader",
+	"BdiStocksSummaryReader",
+]

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from filings_b3._internal.config.contracts.daily_bulletin import (
 	BDI_BTB_LENDING_OPEN_POSITIONS,
+	BDI_HISTORICAL_EXCHANGE,
 	BDI_STOCKS_SUMMARY,
 )
 from filings_b3._internal.config.contracts.search_trading_session import (
@@ -52,6 +53,7 @@ from filings_b3._internal.utils.tabular_reader import (
 
 __all__ = [
 	"BDI_BTB_LENDING_OPEN_POSITIONS",
+	"BDI_HISTORICAL_EXCHANGE",
 	"BDI_STOCKS_SUMMARY",
 	"INSTRUMENTS_FILE",
 	"INSTRUMENTS_FILE_ADR",

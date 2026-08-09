@@ -214,6 +214,13 @@ class _BaseBdiReader(IngestionReader):
 		this wrong towards ``None`` on an echoing endpoint and the dataset multiplies; get it
 		wrong towards ``1`` on a paginated one and rows are silently dropped — so set it from
 		the source's observed behaviour, never from the URL shape.
+	dict_field_renames : dict of {str: str} or None
+		API field name → published column name, for the fields where the endpoint's own name
+		would publish the wrong meaning. Empty by default, because a rename is a liability: it
+		breaks the otherwise mechanical trace from a column back to the payload, so it must be
+		justified against the dataset's glossary, never used for taste. The mapping is applied
+		to the API's PascalCase names **before** the ``UPPER_SNAKE_CASE`` conversion, so a
+		reader declares ``{"Symb": "TckrSymb"}``, not the converted form.
 	"""
 
 	# Required — declared as bare annotations so an unset subclass raises AttributeError; the
@@ -231,6 +238,8 @@ class _BaseBdiReader(IngestionReader):
 	# Pagination is DECLARED, never assumed — see the module docstring. One page by default,
 	# which is what 32 of the 38 BDI datasets serve; a genuinely paginated dataset sets None.
 	int_max_pages: int | None = 1
+	# Renames are the exception, not a styling layer — see the class docstring.
+	dict_field_renames: dict[str, str] | None = None
 
 	def __init_subclass__(cls, **kwargs: object) -> None:
 		"""Fail loudly at subclass creation if a required class attribute is missing.
@@ -536,9 +545,18 @@ class _BaseBdiReader(IngestionReader):
 		if not list_values:
 			return pd.DataFrame()
 
-		list_cols: list[str] = [
-			pascal_to_upper_snake(str(dict_col["name"]))
+		dict_renames = self.dict_field_renames or {}
+		# Some field names arrive padded, and a padded name becomes a column no consumer can
+		# address, since it prints as PRIC_VAL yet is only reachable as "PRIC_VAL " with the
+		# trailing space. Stripping here fixes every dataset at once and lets a rename map be
+		# keyed by the field's real name.
+		list_fields: list[str] = [
+			str(dict_col["name"]).strip()
 			for dict_col in dict_table.get("columns", [])
 			if isinstance(dict_col, dict)
+		]
+		list_cols: list[str] = [
+			pascal_to_upper_snake(dict_renames.get(str_field, str_field))
+			for str_field in list_fields
 		]
 		return pd.DataFrame(_trim_unnamed_tail(list_values, len(list_cols)), columns=list_cols)
