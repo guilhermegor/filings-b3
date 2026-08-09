@@ -1,8 +1,17 @@
-# Weekly, NON-BLOCKING layout-drift detector.
+# Weekly, NON-BLOCKING drift detectors — two independent sweeps against what B3 publishes today.
 #
-# Downloads B3's authoritative BVBG.028 "para UP2DATA" layout spreadsheet, compares the columns B3
-# declares against the columns the instruments reader maps, and — on any divergence — opens or
-# updates ONE tracking issue. It is deliberately kept OUT of the PR gate and the release path:
+# Both compare B3's own published truth against what this repository declares, and both report by
+# opening or updating ONE tracking issue each (kept apart by a hidden body marker, since they share
+# the label):
+#   * `drift`   — the BVBG.028 layout vs the columns the instruments reader maps;
+#   * `catalog` — the BDI's table index vs bin/bdi_catalog.py, so a table B3 adds cannot stay
+#                 invisible (the audit in #186 found 32 of 69 tables had never been recorded).
+# They live in one workflow on purpose: same nature, same cadence, and one scheduled trigger to
+# keep alive instead of two (GitHub disables a schedule after ~60 days without a push).
+#
+# The layout sweep downloads B3's authoritative BVBG.028 "para UP2DATA" spreadsheet, compares the
+# columns B3 declares against the columns the instruments reader maps, and — on any divergence —
+# opens or updates ONE tracking issue. It is deliberately kept OUT of the PR gate and the release path:
 #   * tests/conftest.py blocks the network on purpose, so this can never run at test time; and
 #   * a B3 outage and a real drift are indistinguishable in a red check, so a red check must never
 #     gate a PR.
@@ -59,3 +68,23 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: poetry run python bin/check_contract_drift.py
+
+  catalog:
+    name: Detect BDI catalog divergence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set Up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # No Poetry here on purpose: the check reads B3's index and the catalog with the standard
+      # library alone, so installing the package would only add minutes and a failure mode.
+      - name: Run the catalog check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python bin/check_bdi_catalog.py
