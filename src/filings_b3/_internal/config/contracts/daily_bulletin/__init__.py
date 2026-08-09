@@ -16,6 +16,9 @@ from __future__ import annotations
 from filings_b3._internal.config.contracts.daily_bulletin.btb_lending_open_positions import (
 	BDI_BTB_LENDING_OPEN_POSITIONS,
 )
+from filings_b3._internal.config.contracts.daily_bulletin.historical_exchange import (
+	BDI_HISTORICAL_EXCHANGE,
+)
 from filings_b3._internal.config.contracts.daily_bulletin.stocks_summary import (
 	BDI_STOCKS_SUMMARY,
 )
@@ -23,5 +26,6 @@ from filings_b3._internal.config.contracts.daily_bulletin.stocks_summary import 
 
 __all__ = [
 	"BDI_BTB_LENDING_OPEN_POSITIONS",
+	"BDI_HISTORICAL_EXCHANGE",
 	"BDI_STOCKS_SUMMARY",
 ]

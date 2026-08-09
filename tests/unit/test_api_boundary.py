@@ -80,7 +80,13 @@ _PUBLIC_SURFACE: frozenset[str] = frozenset({"__version__"})
 # here, never an accident. A section whose first reader has not landed yet
 # (`search_trading_session`) is listed with an empty set: the path is public, it exports nothing.
 _SECTION_SURFACE: dict[str, frozenset[str]] = {
-	"daily_bulletin": frozenset({"BdiBtbLendingOpenPositionsReader", "BdiStocksSummaryReader"}),
+	"daily_bulletin": frozenset(
+		{
+			"BdiBtbLendingOpenPositionsReader",
+			"BdiHistoricalExchangeReader",
+			"BdiStocksSummaryReader",
+		}
+	),
 	"search_trading_session": frozenset(
 		{
 			"InstrumentsFileAdrReader",

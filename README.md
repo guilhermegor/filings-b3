@@ -26,6 +26,7 @@ no caminho da URL e o corpo é `{}`; um `GET` devolve 405. Os _readers_ já faze
 
 - [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/stocks_summary/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
 - [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/btb_lending_open_positions/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
+- [`BdiHistoricalExchangeReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/historical_exchange/) — as taxas de câmbio oficiais do Banco Central sob a Resolução BCB nº 120 (`HistoricalExchange`), com cinco anos de histórico.
 
 ### 🗂️ Readers da Pesquisa por Pregão
 

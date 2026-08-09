@@ -10,6 +10,7 @@ nav:
       - Boletim Diário (BDI):
           - Visão geral: api/daily_bulletin/index.md
           - Posições em aberto de BTB: api/daily_bulletin/btb_lending_open_positions.md
+          - Histórico de taxas de câmbio: api/daily_bulletin/historical_exchange.md
           - Resumo de ações: api/daily_bulletin/stocks_summary.md
       - Pesquisa por Pregão:
           - Visão geral: api/search_trading_session/index.md
