@@ -625,6 +625,34 @@
   
   
     <li class="md-nav__item">
+      <a href="historical_exchange/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Histórico de taxas de câmbio
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="stocks_summary/" class="md-nav__link">
         
   
@@ -1489,6 +1517,12 @@ fazem isso; quem chama não precisa saber.</p>
   quantidade emprestada, o preço médio de empréstimo e o saldo financeiro. <strong>Contrato de coluna
   completa</strong> (as 10 colunas da fonte, em ordem), verificado contra uma resposta ao vivo e o glossário
   oficial da B3.</li>
+<li><strong><a href="historical_exchange/">Histórico de taxas de câmbio (Res. BCB nº 120)</a></strong> —
+  <code>BdiHistoricalExchangeReader</code>: as taxas de câmbio oficiais determinadas pelo Banco Central
+  (tabela <code>HistoricalExchange</code>), que a B3 usa para precificar contratos futuros e de opções
+  referenciados em moeda. <strong>Histórico de cinco anos completos mais o ano corrente</strong>, ao contrário
+  dos demais datasets da seção. O <em>reader</em> desfaz uma troca de nomes da API, publicando o ativo em
+  <code>ASST</code> e o instrumento em <code>TCKR_SYMB</code> como manda o glossário.</li>
 <li><strong><a href="stocks_summary/">Resumo diário do mercado à vista de ações</a></strong> — <code>BdiStocksSummaryReader</code>: o
   resumo por pregão do mercado à vista (tabela <code>DailyAverageStocks</code>). Uma linha por instrumento com a
   quantidade de negócios e o volume financeiro negociado do dia.</li>
