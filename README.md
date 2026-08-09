@@ -28,7 +28,9 @@ contrato e com proveniência — valores monetários como `Decimal` exato, nunca
 O arquivo de instrumentos do pregão (`IN{aammdd}.zip`, BVBG.028.02) é **um download lido de dezoito
 formas**: cada registro aninha os seus campos sob exatamente um de 20 blocos `InstrmInf`. O
 _download_ é um zip dentro de um zip, com um XML por _snapshot_ intradiário do pregão — todo
-_reader_ lê o de maior `CreDtAndTm`, o definitivo, porque os _snapshots_ são cumulativos.
+_reader_ lê o de maior `CreDtAndTm`, o definitivo, porque os _snapshots_ são cumulativos, e
+confere a contagem de registros que o próprio arquivo declara, para que um download incompleto
+não passe por pregão pequeno.
 
 - [`InstrumentsFileReader`](https://guilhermegor.github.io/filings-b3/api/search_trading_session/instruments_file/) — todos os tipos sob o layout de 52 colunas publicado pela B3.
 - **Por tipo**, cada um com a lista *completa* de campos do seu bloco:

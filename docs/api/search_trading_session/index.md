@@ -78,6 +78,18 @@ Por isso todo _reader_ da família lê o _snapshot_ de **maior `CreDtAndTm`** �
 silêncio os registros tardios do pregão. Um _snapshot_ sem `CreDtAndTm` faz o _reader_ falhar
 alto, em vez de adivinhar qual é o vigente.
 
+#### Download incompleto não passa por pregão pequeno
+
+O mesmo cabeçalho declara **quantos registros** o _snapshot_ carrega (`TtlNbOfMsg` — em
+ISO-20022 cada `<Instrm>` é uma _message_). Todo _reader_ da família confere esse número contra
+os registros efetivamente lidos e **falha alto** quando eles divergem.
+
+A conferência existe porque um download interrompido é invisível por construção: o XML é
+bem-formado até onde chegou, cada linha que chegou é válida, o contrato e a tipagem passam — e o
+_frame_ volta menor, indistinguível de uma sessão com menos instrumentos. A contagem é feita
+**antes** do filtro de sub-bloco, então vale igual para o _reader_ consolidado e para os
+dezessete por tipo, cujas linhas são um recorte do arquivo.
+
 Todo _reader_ tem a mesma forma pública:
 
 ```python

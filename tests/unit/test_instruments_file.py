@@ -182,6 +182,37 @@ def test_read_extracts_only_the_snapshot_it_will_parse(
 	]
 
 
+def test_read_rejects_a_snapshot_that_holds_fewer_records_than_it_declares(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	"""The family passes the declared-count path down, so a truncated IN cannot read as a small IN.
+
+	Pins the *wiring*, not the seam: `read_xml` verifies the count only when given the path to it,
+	and the path is knowledge that belongs to this reader (BVBG.028 calls it ``TtlNbOfMsg``). With
+	the argument dropped, every assertion in this module would still pass while a truncated
+	download read as a quiet session.
+	"""
+	bytes_inner = zipfile.ZipFile(_FIXTURE).read("IN260729.zip")
+	buf_doctored = io.BytesIO()
+	with (
+		zipfile.ZipFile(io.BytesIO(bytes_inner)) as cls_src,
+		zipfile.ZipFile(buf_doctored, "w") as cls_out,
+	):
+		for str_name in cls_src.namelist():
+			bytes_xml = cls_src.read(str_name)
+			cls_out.writestr(str_name, bytes_xml.replace(b"<TtlNbOfMsg>50<", b"<TtlNbOfMsg>51<"))
+
+	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 0) -> Path:  # noqa: ARG001
+		with zipfile.ZipFile(path_dest, "w") as cls_zip:
+			cls_zip.writestr("IN260729.zip", buf_doctored.getvalue())
+		return path_dest
+
+	monkeypatch.setattr(http_downloader, "download_file", _fake_download)
+
+	with pytest.raises(ValueError, match="declares 51 records but holds 50"):
+		InstrumentsFileReader(_SESSION).read()
+
+
 def test_read_raises_when_a_snapshot_does_not_declare_its_generation_time(
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
