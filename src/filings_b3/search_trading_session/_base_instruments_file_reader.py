@@ -375,8 +375,9 @@ class _BaseInstrumentsFileReader(IngestionReader):
 		ContractError
 			When the flattened frame violates :attr:`cls_contract`.
 		ValueError
-			When the archive holds no XML member, or when a snapshot inside it does not declare
-			its ``CreDtAndTm``.
+			When the archive holds no XML member; when a snapshot inside it does not declare its
+			``CreDtAndTm``; or when the chosen snapshot's declared record count is absent,
+			non-numeric, or different from the number of records parsed (an incomplete download).
 
 		Notes
 		-----

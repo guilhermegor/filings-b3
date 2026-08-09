@@ -41,9 +41,10 @@ Decisão do dono do repositório, e é o que torna a guarda reaproveitável:
       `InstrumentsFileReader.read()` falhar — sem ele, remover o argumento do _reader_ não
       quebraria nenhum teste.
 - [x] 377 testes de unidade verdes.
-- [x] Verificação ao vivo contra o `IN260729` real: o caminho resolve no documento de 664 MB
-      lido em _stream_, os 183.174 declarados batem, e o _reader_ por sub-bloco segue com 8.293
-      linhas.
+- [x] Verificação ao vivo contra o `IN260729` real: o caminho resolve no _snapshot_ de
+      pós-fechamento (183.174 registros, 664 MB — o de pré-abertura tem 183.164 e ~660 MB, que é
+      o número citado no #167), lido em _stream_, e os 183.174 declarados batem; o _reader_ por
+      sub-bloco segue com 8.293 linhas.
 - [x] `docs/api/search_trading_session/index.md` + `README.md`.
 
 ## Aberto
