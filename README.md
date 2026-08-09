@@ -20,6 +20,10 @@ contrato e com proveniência — valores monetários como `Decimal` exato, nunca
 ## ✨ Principais recursos
 
 ### 📊 Readers do Boletim Diário (BDI)
+
+As tabelas do BDI são servidas por uma **API de POST** (`arquivos.b3.com.br/bdi`) — a consulta vai
+no caminho da URL e o corpo é `{}`; um `GET` devolve 405. Os _readers_ já fazem isso.
+
 - [`BdiStocksSummaryReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/stocks_summary/) — o resumo por pregão do mercado à vista de ações (`DailyAverageStocks`).
 - [`BdiBtbLendingOpenPositionsReader`](https://guilhermegor.github.io/filings-b3/api/daily_bulletin/btb_lending_open_positions/) — o retrato das posições em aberto de empréstimo de ativos (BTB) (`BTBLendingOpenPosition`).
 

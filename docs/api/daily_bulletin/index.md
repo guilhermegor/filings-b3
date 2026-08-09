@@ -4,6 +4,22 @@ A seção `filings_b3.daily_bulletin` lê os conjuntos de dados do **Boletim Di�
 servidos a partir de `arquivos.b3.com.br/bdi`. Cada conjunto é uma tabela JSON paginada; um _reader_
 transforma um pregão em um `pandas.DataFrame` tipado, validado por contrato e com proveniência.
 
+O serviço é uma **API de POST**: a consulta inteira viaja no caminho da URL e o corpo é um objeto
+JSON vazio (`{}`). Um `GET` na mesma URL devolve **405 Method Not Allowed** — com ou sem _cookies_
+e cabeçalhos de navegador, então é o método, não bloqueio de robô. Os _readers_ desta seção já
+fazem isso; quem chama não precisa saber.
+
+Duas irregularidades do formato que os _readers_ absorvem:
+
+- **Linhas mais largas que o cabeçalho.** A `DailyAverageStocks` declara 4 colunas e envia 5
+  posições por linha, a quinta sempre nula, enquanto a `EconomicIndicators` bate exato. Como o
+  payload é posicional, o excedente não tem nome: ele é descartado **apenas** quando está vazio.
+  Um valor de verdade sem coluna correspondente faz o _reader_ falhar alto, porque descartá-lo em
+  silêncio é exatamente como uma coluna da fonte deixa de chegar sem nada ficar vermelho.
+- **Janela de disponibilidade.** A resposta declara um `limitDate` por tabela (`"D-21"` na
+  `EconomicIndicators`, por exemplo): o serviço só devolve os últimos dias. Um pedido fora da
+  janela não é erro de código.
+
 > **Veja também:** [Visão geral da API](../index.md) · [Uso](../../usage.md) · [Exemplos](../../examples.md)
 
 ---

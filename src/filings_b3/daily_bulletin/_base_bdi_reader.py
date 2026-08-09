@@ -95,12 +95,19 @@ from filings_b3._internal.utils.tabular_reader import (
 	find_contract_problems,
 )
 from filings_b3._internal.utils.text import pascal_to_upper_snake
-from filings_b3._internal.utils.typing import TypeChecker
+from filings_b3._internal.utils.typing import TypeChecker, type_checker
 
 
 # Root every BDI dataset serves from. Declared once for the whole section so a reader names only
 # its endpoint — if B3 moves the bulletin, one line changes.
 BDI_TABLE_BASE: str = "https://arquivos.b3.com.br/bdi/table"
+
+# The bulletin's service answers **405 Method Not Allowed** to a GET: it is a POST API whose query
+# travels entirely in the URL path, so the body is an empty JSON object. Measured against
+# `EconomicIndicators` and `DailyAverageStocks` — a bare POST with these two lines returns 200 with
+# no cookie, no browser user-agent and no `origin` header, so this is the method, not a bot check.
+_REQUEST_PAYLOAD: bytes = b"{}"
+_REQUEST_CONTENT_TYPE: str = "application/json"
 
 # Distribution name (hyphenated) for importlib.metadata — NOT the import package name.
 _DISTRIBUTION_NAME: str = "filings-b3"
@@ -116,6 +123,48 @@ _REQUIRED_ATTRS: tuple[str, ...] = (
 # never returns an empty `values`) from looping forever against a live endpoint.
 _DEFAULT_PAGE_SIZE: int = 1_000
 _MAX_PAGES: int = 500
+
+
+@type_checker
+def _trim_unnamed_tail(list_values: list[object], int_cols: int) -> list[object]:
+	"""Drop trailing row positions the header does not name, refusing to drop a real value.
+
+	Some bulletin tables send rows **wider than their own header**: ``DailyAverageStocks``
+	declares four columns and ships five positions per row, the fifth always ``null``, while
+	``EconomicIndicators`` matches exactly. Since the payload is positional, the surplus cannot
+	be named — but discarding it blindly is how a source column silently stops arriving, so
+	anything other than an empty tail is an error rather than a trim.
+
+	Parameters
+	----------
+	list_values : list of object
+		The page's rows, each a positional list.
+	int_cols : int
+		How many columns the header names.
+
+	Returns
+	-------
+	list of object
+		The rows, each truncated to ``int_cols`` positions.
+
+	Raises
+	------
+	ValueError
+		If a trimmed position holds anything but ``None`` — a value with no column name.
+	"""
+	list_out: list[object] = []
+	for list_row in list_values:
+		if not isinstance(list_row, list) or len(list_row) <= int_cols:
+			list_out.append(list_row)
+			continue
+		list_tail = list_row[int_cols:]
+		if any(obj_extra is not None for obj_extra in list_tail):
+			raise ValueError(
+				f"row carries {len(list_row)} values for {int_cols} named columns, and the "
+				f"unnamed tail is not empty: {list_tail!r}"
+			)
+		list_out.append(list_row[:int_cols])
+	return list_out
 
 
 @dataclass(frozen=True)
@@ -439,7 +488,12 @@ class _BaseBdiReader(IngestionReader):
 		from filings_b3._internal.utils.http_downloader import download_file
 
 		str_url = self.build_url(int_page)
-		path_page = download_file(str_url, path_dir / f"page_{int_page:04d}.json")
+		path_page = download_file(
+			str_url,
+			path_dir / f"page_{int_page:04d}.json",
+			bytes_payload=_REQUEST_PAYLOAD,
+			str_content_type=_REQUEST_CONTENT_TYPE,
+		)
 		return _Page(
 			path_file=path_page,
 			str_url=str_url,
@@ -463,6 +517,12 @@ class _BaseBdiReader(IngestionReader):
 		-------
 		pd.DataFrame
 			The page's rows under ``UPPER_SNAKE_CASE`` column names, or an empty frame.
+
+		Raises
+		------
+		ValueError
+			When a row carries a **value** in a position no column names — that would be source
+			data silently thrown away, so it fails instead of guessing a name for it.
 		"""
 		# Decimal parsing here is load-bearing, not a nicety. Left to its default, json turns
 		# a traded volume into a binary float that already holds a slightly different number,
@@ -481,4 +541,4 @@ class _BaseBdiReader(IngestionReader):
 			for dict_col in dict_table.get("columns", [])
 			if isinstance(dict_col, dict)
 		]
-		return pd.DataFrame(list_values, columns=list_cols)
+		return pd.DataFrame(_trim_unnamed_tail(list_values, len(list_cols)), columns=list_cols)

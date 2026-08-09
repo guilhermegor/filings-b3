@@ -77,7 +77,13 @@ def _patch_download(monkeypatch: pytest.MonkeyPatch) -> None:
 		}
 	}
 
-	def _fake_download(str_url: str, path_dest: Path, int_timeout_s: int = 30) -> Path:
+	def _fake_download(
+		str_url: str,
+		path_dest: Path,
+		int_timeout_s: int = 30,
+		bytes_payload: bytes | None = None,
+		str_content_type: str | None = None,
+	) -> Path:
 		path_dest.parent.mkdir(parents=True, exist_ok=True)
 		path_dest.write_bytes(json.dumps(dict_payload).encode("utf-8"))
 		return path_dest
