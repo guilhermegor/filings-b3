@@ -62,8 +62,7 @@ bin/corporate_ca.pem
 # Scaffoldable lessons — local working copies only; the canonical, cross-project
 # stores live globally in ~/.claude/memory/lessons/ (templates) and
 # ~/.claude/memory/lessons-dotfiles/ (the dotfiles-dev Claude toolchain). Never committed here.
-docs/blueprintx-lessons.md
-docs/dotfiles-dev-lessons.md
+.specs/_lessons/
 
 # Environment files — ignore real env files, keep .env.example tracked
 .env
